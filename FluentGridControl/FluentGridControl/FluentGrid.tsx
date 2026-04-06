@@ -401,7 +401,12 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                 const recordItem = item as RecordType;
                 // Product name is read-only, not editable
                 return (
-                    <span style={{ fontSize: 13, fontWeight: 500 }}>
+                    <span style={{ 
+                        fontSize: 13, 
+                        fontWeight: 500,
+                        paddingLeft: '32px', // Indent child items under group
+                        display: 'block'
+                    }}>
                         {recordItem.product}
                     </span>
                 );
