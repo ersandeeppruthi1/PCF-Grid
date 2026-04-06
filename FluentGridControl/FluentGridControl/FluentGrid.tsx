@@ -35,10 +35,16 @@ interface FluentGridProps {
 }
 
 export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, context }) => {
+    console.log("FluentGrid: Component rendered");
+    console.log("FluentGrid: initialData:", initialData);
+    console.log("FluentGrid: context:", context);
 
     // ---------------- STATE ----------------
     const [data, setData] = React.useState<RecordType[]>(initialData || []);
     const [loading, setLoading] = React.useState(false);
+
+    console.log("FluentGrid: Current data state:", data);
+    console.log("FluentGrid: Current loading state:", loading);
 
     const [request, setRequest] = React.useState({
         page: 1,
@@ -50,19 +56,44 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
 
     // ---------------- FETCH ----------------
     const fetchData = React.useCallback(async () => {
+        console.log("FluentGrid: fetchData called");
         setLoading(true);
         try {
+            console.log("FluentGrid: Making API request to /api/grid with request:", request);
             const res = await axios.post("/api/grid", request);
+            console.log("FluentGrid: API response:", res.data);
             setData(res.data.items);
+            console.log("FluentGrid: Data set to:", res.data.items);
+        } catch (error) {
+            console.error("FluentGrid: API request failed:", error);
         } finally {
+            console.log("FluentGrid: Setting loading to false");
             setLoading(false);
         }
     }, [request]);
 
     React.useEffect(() => {
-        const t = setTimeout(fetchData, 400);
-        return () => clearTimeout(t);
+        console.log("FluentGrid: useEffect triggered for fetchData");
+        console.log("FluentGrid: Current request:", request);
+        const t = setTimeout(() => {
+            console.log("FluentGrid: Calling fetchData after 400ms delay");
+            fetchData();
+        }, 400);
+        return () => {
+            console.log("FluentGrid: Clearing fetchData timeout");
+            clearTimeout(t);
+        };
     }, [fetchData]);
+
+    // Effect to update data when initialData changes
+    React.useEffect(() => {
+        console.log("FluentGrid: useEffect triggered for initialData change");
+        console.log("FluentGrid: New initialData:", initialData);
+        if (initialData && initialData.length > 0) {
+            console.log("FluentGrid: Setting data from initialData");
+            setData(initialData);
+        }
+    }, [initialData]);
 
     // ---------------- FILTER ----------------
     const setFilter = (field: string, value: string) => {
@@ -109,22 +140,29 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
 
     // ---------------- GROUPING + AGGREGATION ----------------
     const groupedData = React.useMemo(() => {
+        console.log("FluentGrid: Processing groupedData with data:", data);
 
         const map = new Map<string, RecordType[]>();
 
         data.forEach(item => {
+            console.log("FluentGrid: Processing item for grouping:", item);
             if (!map.has(item.product)) {
                 map.set(item.product, []);
             }
             map.get(item.product)!.push(item);
         });
 
+        console.log("FluentGrid: Grouped map:", map);
+
         const result: GridItem[] = [];
 
         map.forEach((items, key) => {
+            console.log(`FluentGrid: Processing group ${key} with ${items.length} items:`, items);
 
             const totalQuantity = items.reduce((s, i) => s + i.quantity, 0);
             const totalAmount = items.reduce((s, i) => s + i.amount, 0);
+
+            console.log(`FluentGrid: Group ${key} totals - quantity: ${totalQuantity}, amount: ${totalAmount}`);
 
             result.push({
                 isGroup: true,
@@ -135,9 +173,13 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                 totalAmount
             });
 
-            items.forEach(item => result.push(item));
+            items.forEach(item => {
+                console.log(`FluentGrid: Adding item to result:`, item);
+                result.push(item);
+            });
         });
 
+        console.log("FluentGrid: Final grouped result:", result);
         return result;
 
     }, [data]);
@@ -245,6 +287,17 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
     };
 
     // ---------------- UI ----------------
+    console.log("FluentGrid: Rendering UI");
+    console.log("FluentGrid: groupedData for render:", groupedData);
+    console.log("FluentGrid: columns for render:", columns);
+    console.log("FluentGrid: loading state for render:", loading);
+    
+    if (loading) {
+        console.log("FluentGrid: Showing loading spinner");
+    }
+    
+    console.log("FluentGrid: DetailsList will render with", groupedData.length, "items");
+    
     return (
         <Stack tokens={{ childrenGap: 10 }}>
 
