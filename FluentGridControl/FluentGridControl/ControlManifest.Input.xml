@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<manifest>
+  <control namespace="FluentGrid" constructor="FluentGridControl" version="0.0.1" display-name-key="FluentGridControl" description-key="FluentGridControl description" control-type="standard" >
+
+    <external-service-usage enabled="false">
+    
+    </external-service-usage>
+    <data-set name="dataset" display-name-key="Dataset_Display_Key">
+    </data-set>
+      <feature-usage>
+      <uses-feature name="WebAPI" required="true" />
+      <uses-feature name="Utility" required="true" />
+    </feature-usage>
+
+    <resources>
+        <code path="index.ts" order="1" />
+            <platform-library name="React" version="16.14.0" />
+    </resources>
+  </control>
+</manifest>
