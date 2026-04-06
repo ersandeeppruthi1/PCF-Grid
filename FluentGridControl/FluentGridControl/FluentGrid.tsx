@@ -54,6 +54,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
     });
 
     const [editing, setEditing] = React.useState<Record<string, Partial<RecordType>>>({});
+    const [editingRows, setEditingRows] = React.useState<Set<string>>(new Set());
     const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
 
     // Auto-expand groups when data changes (optional - for better UX)
@@ -118,6 +119,18 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
     };
 
     // ---------------- EDIT ----------------
+    const toggleEditMode = (id: string) => {
+        setEditingRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) {
+                newSet.delete(id);
+            } else {
+                newSet.add(id);
+            }
+            return newSet;
+        });
+    };
+
     const updateField = (id: string, field: keyof RecordType, value: string | number | undefined) => {
         if (value !== undefined) {
             setEditing(prev => ({
@@ -158,6 +171,13 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             const copy = { ...prev };
             delete copy[id];
             return copy;
+        });
+
+        // Exit edit mode after saving
+        setEditingRows(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(id);
+            return newSet;
         });
     };
 
@@ -216,6 +236,10 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
         fontWeight: "600"
     });
 
+    const getRowBackgroundColor = (qty: number) => ({
+        backgroundColor: qty < 10 ? "#ffebee" : "#e8f5e8"
+    });
+
     // ---------------- COLUMNS ----------------
     const columns: IColumn[] = [
 
@@ -257,11 +281,11 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                     );
                 }
 
+                // Product name is read-only, not editable
                 return (
-                    <TextField
-                        value={editing[item.id]?.product ?? item.product}
-                        onChange={(_, v) => updateField(item.id, "product", v)}
-                    />
+                    <div style={getRowBackgroundColor(item.quantity)}>
+                        <span>{item.product}</span>
+                    </div>
                 );
             },
             onRenderHeader: () => (
@@ -282,16 +306,36 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                     return <strong>Total: {item.totalQuantity}</strong>;
                 }
 
-                return (
-                    <TextField
-                        type="number"
-                        value={(editing[item.id]?.quantity ?? item.quantity).toString()}
-                        onChange={(_, v) => updateField(item.id, "quantity", Number(v))}
-                        styles={{
-                            field: getQuantityStyle(item.quantity)
-                        }}
-                    />
-                );
+                const isEditing = editingRows.has(item.id);
+                
+                if (isEditing) {
+                    return (
+                        <div style={getRowBackgroundColor(item.quantity)}>
+                            <TextField
+                                type="number"
+                                value={(editing[item.id]?.quantity ?? item.quantity).toString()}
+                                onChange={(_, v) => updateField(item.id, "quantity", Number(v))}
+                                styles={{
+                                    field: getQuantityStyle(item.quantity)
+                                }}
+                            />
+                        </div>
+                    );
+                } else {
+                    return (
+                        <div style={getRowBackgroundColor(item.quantity)}>
+                            <span 
+                                style={{...getQuantityStyle(item.quantity), cursor: 'pointer'}}
+                                onClick={() => toggleEditMode(item.id)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(item.id)}
+                            >
+                                {item.quantity}
+                            </span>
+                        </div>
+                    );
+                }
             }
         },
 
@@ -302,16 +346,36 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             onRender: item => {
 
                 if (item.isGroup) {
-                    return <strong>Total: {item.totalAmount}</strong>;
+                    return <strong>Total: ${item.totalAmount.toFixed(2)}</strong>;
                 }
 
-                return (
-                    <TextField
-                        type="number"
-                        value={(editing[item.id]?.amount ?? item.amount).toString()}
-                        onChange={(_, v) => updateField(item.id, "amount", Number(v))}
-                    />
-                );
+                const isEditing = editingRows.has(item.id);
+                
+                if (isEditing) {
+                    return (
+                        <div style={getRowBackgroundColor(item.quantity)}>
+                            <TextField
+                                type="number"
+                                value={(editing[item.id]?.amount ?? item.amount).toString()}
+                                onChange={(_, v) => updateField(item.id, "amount", Number(v))}
+                            />
+                        </div>
+                    );
+                } else {
+                    return (
+                        <div style={getRowBackgroundColor(item.quantity)}>
+                            <span 
+                                onClick={() => toggleEditMode(item.id)}
+                                role="button"
+                                tabIndex={0}
+                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(item.id)}
+                                style={{cursor: 'pointer'}}
+                            >
+                                ${item.amount.toFixed(2)}
+                            </span>
+                        </div>
+                    );
+                }
             }
         },
 
@@ -323,12 +387,33 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
 
                 if (item.isGroup) return null;
 
-                return (
-                    <PrimaryButton
-                        text="Save"
-                        onClick={() => saveRow(item.id)}
-                    />
-                );
+                const isEditing = editingRows.has(item.id);
+
+                if (isEditing) {
+                    return (
+                        <div style={getRowBackgroundColor(item.quantity)}>
+                            <Stack horizontal tokens={{ childrenGap: 8 }}>
+                                <PrimaryButton
+                                    text="Save"
+                                    onClick={() => saveRow(item.id)}
+                                />
+                                <DefaultButton
+                                    text="Cancel"
+                                    onClick={() => toggleEditMode(item.id)}
+                                />
+                            </Stack>
+                        </div>
+                    );
+                } else {
+                    return (
+                        <div style={getRowBackgroundColor(item.quantity)}>
+                            <DefaultButton
+                                text="Edit"
+                                onClick={() => toggleEditMode(item.id)}
+                            />
+                        </div>
+                    );
+                }
             }
         }
     ];
