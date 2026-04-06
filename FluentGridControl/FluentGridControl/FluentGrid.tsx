@@ -329,8 +329,8 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
 
     const getRowBackgroundColor = (qty: number) => ({
         backgroundColor: qty < 10 ? "#ffebee" : "#e8f5e8",
-        padding: "8px",
-        minHeight: "32px",
+        padding: "2px 4px",
+        minHeight: "24px",
         display: "flex" as const,
         alignItems: "center" as const
     });
@@ -354,8 +354,8 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                             styles={{
                                 root: {
                                     backgroundColor: '#f8f9fa',
-                                    padding: '8px 12px',
-                                    borderRadius: '4px',
+                                    padding: '4px 8px',
+                                    borderRadius: '2px',
                                     border: '1px solid #dee2e6',
                                     fontWeight: 600,
                                     color: '#495057'
@@ -385,7 +385,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                         ...getRowBackgroundColor(recordItem.quantity),
                         fontWeight: 500
                     }}>
-                        <span>{recordItem.product}</span>
+                        <span style={{ fontSize: 13 }}>{recordItem.product}</span>
                     </div>
                 );
             },
@@ -429,7 +429,13 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                                 value={(editing[recordItem.id]?.quantity ?? recordItem.quantity).toString()}
                                 onChange={(_, v) => updateField(recordItem.id, "quantity", Number(v))}
                                 styles={{
-                                    field: getQuantityStyle(recordItem.quantity)
+                                    field: {
+                                        ...getQuantityStyle(recordItem.quantity),
+                                        fontSize: 13,
+                                        minHeight: 20,
+                                        padding: '2px 4px'
+                                    },
+                                    root: { height: 24 }
                                 }}
                             />
                         </div>
@@ -438,7 +444,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                     return (
                         <div style={getRowBackgroundColor(recordItem.quantity)}>
                             <span 
-                                style={{...getQuantityStyle(recordItem.quantity), cursor: 'pointer'}}
+                                style={{...getQuantityStyle(recordItem.quantity), cursor: 'pointer', fontSize: 13}}
                                 onClick={() => toggleEditMode(recordItem.id)}
                                 role="button"
                                 tabIndex={0}
@@ -477,7 +483,13 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                                 value={(editing[recordItem.id]?.amount ?? recordItem.amount).toString()}
                                 onChange={(_, v) => updateField(recordItem.id, "amount", Number(v))}
                                 styles={{
-                                    field: { fontWeight: 500 }
+                                    field: { 
+                                        fontWeight: 500,
+                                        fontSize: 13,
+                                        minHeight: 20,
+                                        padding: '2px 4px'
+                                    },
+                                    root: { height: 24 }
                                 }}
                             />
                         </div>
@@ -490,7 +502,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                                 role="button"
                                 tabIndex={0}
                                 onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
-                                style={{cursor: 'pointer', fontWeight: 500}}
+                                style={{cursor: 'pointer', fontWeight: 500, fontSize: 13}}
                             >
                                 ${recordItem.amount.toFixed(2)}
                             </span>
@@ -519,14 +531,14 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                                     text="Save"
                                     onClick={() => saveRow(recordItem.id)}
                                     styles={{
-                                        root: { minWidth: 50, height: 28 }
+                                        root: { minWidth: 40, height: 24, fontSize: 12 }
                                     }}
                                 />
                                 <DefaultButton
                                     text="Cancel"
                                     onClick={() => toggleEditMode(recordItem.id)}
                                     styles={{
-                                        root: { minWidth: 50, height: 28 }
+                                        root: { minWidth: 40, height: 24, fontSize: 12 }
                                     }}
                                 />
                             </Stack>
@@ -539,7 +551,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                                 text="Edit"
                                 onClick={() => toggleEditMode(recordItem.id)}
                                 styles={{
-                                    root: { minWidth: 60, height: 28 }
+                                    root: { minWidth: 40, height: 24, fontSize: 12 }
                                 }}
                             />
                         </div>
@@ -622,15 +634,18 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                         root: {
                             '& .ms-DetailsHeader': {
                                 backgroundColor: '#f8f9fa',
-                                borderBottom: '2px solid #dee2e6'
+                                borderBottom: '2px solid #dee2e6',
+                                minHeight: '32px'
                             },
                             '& .ms-DetailsHeader-cell': {
-                                fontSize: 14,
+                                fontSize: 13,
                                 fontWeight: 600,
-                                color: '#495057'
+                                color: '#495057',
+                                padding: '4px 8px'
                             },
                             '& .ms-DetailsRow': {
                                 borderBottom: '1px solid #ededed',
+                                minHeight: '28px',
                                 '&:hover': {
                                     backgroundColor: '#f5f5f5'
                                 },
@@ -639,8 +654,15 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                                 }
                             },
                             '& .ms-DetailsRow-cell': {
-                                fontSize: 14,
-                                padding: '4px 8px'
+                                fontSize: 13,
+                                padding: '2px 8px',
+                                minHeight: '28px',
+                                display: 'flex',
+                                alignItems: 'center'
+                            },
+                            '& .ms-Check': {
+                                height: '20px',
+                                width: '20px'
                             }
                         }
                     }}
