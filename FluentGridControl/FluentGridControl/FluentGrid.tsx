@@ -450,13 +450,14 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                             value={(editing[recordItem.id]?.quantity ?? recordItem.quantity).toString()}
                             onChange={(_, v) => updateField(recordItem.id, "quantity", Number(v))}
                             styles={{
-                                field: {
+                                root: { height: 24 },
+                                field: { 
+                                    height: 24, 
+                                    padding: '0 4px',
                                     ...getQuantityStyle(recordItem.quantity),
                                     fontSize: 13,
-                                    minHeight: 20,
-                                    padding: '2px 4px'
-                                },
-                                root: { height: 24 }
+                                    minHeight: 20
+                                }
                             }}
                         />
                     );
@@ -500,13 +501,14 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                             value={(editing[recordItem.id]?.amount ?? recordItem.amount).toString()}
                             onChange={(_, v) => updateField(recordItem.id, "amount", Number(v))}
                             styles={{
+                                root: { height: 24 },
                                 field: { 
+                                    height: 24, 
+                                    padding: '0 4px',
                                     fontWeight: 500,
                                     fontSize: 13,
-                                    minHeight: 20,
-                                    padding: '2px 4px'
-                                },
-                                root: { height: 24 }
+                                    minHeight: 20
+                                }
                             }}
                         />
                     );
@@ -656,6 +658,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                             },
                             '& .ms-DetailsRow': {
                                 borderBottom: '1px solid #ededed',
+                                height: '28px',
                                 minHeight: '28px',
                                 '&:hover': {
                                     filter: 'brightness(0.95)'
@@ -663,9 +666,9 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                             },
                             '& .ms-DetailsRow-cell': {
                                 fontSize: 13,
-                                padding: '2px 8px',
-                                minHeight: '28px',
                                 height: '28px',
+                                padding: '0 8px',   // IMPORTANT
+                                lineHeight: '28px',  // IMPORTANT
                                 display: 'flex',
                                 alignItems: 'center'
                             },
