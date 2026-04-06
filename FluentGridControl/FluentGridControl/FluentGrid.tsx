@@ -13,7 +13,9 @@ import {
     ICommandBarItemProps,
     Selection,
     CheckboxVisibility,
-    DetailsListLayoutMode
+    DetailsListLayoutMode,
+    DetailsRow,
+    IDetailsRowProps
 } from "@fluentui/react";
 import axios from "axios";
 
@@ -327,13 +329,31 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
         fontWeight: "600" as const
     });
 
-    const getRowBackgroundColor = (qty: number) => ({
-        backgroundColor: qty < 10 ? "#ffebee" : "#e8f5e8",
-        padding: "2px 4px",
-        minHeight: "24px",
-        display: "flex" as const,
-        alignItems: "center" as const
-    });
+    // ---------------- CUSTOM ROW RENDERER ----------------
+    const onRenderRow = (props: IDetailsRowProps | undefined) => {
+        if (!props) return null;
+
+        const item = props.item as GridItem;
+
+        let backgroundColor = '';
+
+        if (!('isGroup' in item)) {
+            const record = item as RecordType;
+            backgroundColor = record.quantity < 10 ? "#ffebee" : "#e8f5e8";
+        }
+
+        return (
+            <DetailsRow
+                {...props}
+                styles={{
+                    root: {
+                        backgroundColor,
+                        minHeight: 28
+                    }
+                }}
+            />
+        );
+    };
 
     // ---------------- COLUMNS ----------------
     const columns: IColumn[] = [
@@ -381,12 +401,9 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                 const recordItem = item as RecordType;
                 // Product name is read-only, not editable
                 return (
-                    <div style={{
-                        ...getRowBackgroundColor(recordItem.quantity),
-                        fontWeight: 500
-                    }}>
-                        <span style={{ fontSize: 13 }}>{recordItem.product}</span>
-                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 500 }}>
+                        {recordItem.product}
+                    </span>
                 );
             },
             onRenderHeader: () => (
@@ -423,36 +440,32 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                 
                 if (isEditing) {
                     return (
-                        <div style={getRowBackgroundColor(recordItem.quantity)}>
-                            <TextField
-                                type="number"
-                                value={(editing[recordItem.id]?.quantity ?? recordItem.quantity).toString()}
-                                onChange={(_, v) => updateField(recordItem.id, "quantity", Number(v))}
-                                styles={{
-                                    field: {
-                                        ...getQuantityStyle(recordItem.quantity),
-                                        fontSize: 13,
-                                        minHeight: 20,
-                                        padding: '2px 4px'
-                                    },
-                                    root: { height: 24 }
-                                }}
-                            />
-                        </div>
+                        <TextField
+                            type="number"
+                            value={(editing[recordItem.id]?.quantity ?? recordItem.quantity).toString()}
+                            onChange={(_, v) => updateField(recordItem.id, "quantity", Number(v))}
+                            styles={{
+                                field: {
+                                    ...getQuantityStyle(recordItem.quantity),
+                                    fontSize: 13,
+                                    minHeight: 20,
+                                    padding: '2px 4px'
+                                },
+                                root: { height: 24 }
+                            }}
+                        />
                     );
                 } else {
                     return (
-                        <div style={getRowBackgroundColor(recordItem.quantity)}>
-                            <span 
-                                style={{...getQuantityStyle(recordItem.quantity), cursor: 'pointer', fontSize: 13}}
-                                onClick={() => toggleEditMode(recordItem.id)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
-                            >
-                                {recordItem.quantity}
-                            </span>
-                        </div>
+                        <span 
+                            style={{...getQuantityStyle(recordItem.quantity), cursor: 'pointer', fontSize: 13}}
+                            onClick={() => toggleEditMode(recordItem.id)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
+                        >
+                            {recordItem.quantity}
+                        </span>
                     );
                 }
             }
@@ -477,36 +490,32 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                 
                 if (isEditing) {
                     return (
-                        <div style={getRowBackgroundColor(recordItem.quantity)}>
-                            <TextField
-                                type="number"
-                                value={(editing[recordItem.id]?.amount ?? recordItem.amount).toString()}
-                                onChange={(_, v) => updateField(recordItem.id, "amount", Number(v))}
-                                styles={{
-                                    field: { 
-                                        fontWeight: 500,
-                                        fontSize: 13,
-                                        minHeight: 20,
-                                        padding: '2px 4px'
-                                    },
-                                    root: { height: 24 }
-                                }}
-                            />
-                        </div>
+                        <TextField
+                            type="number"
+                            value={(editing[recordItem.id]?.amount ?? recordItem.amount).toString()}
+                            onChange={(_, v) => updateField(recordItem.id, "amount", Number(v))}
+                            styles={{
+                                field: { 
+                                    fontWeight: 500,
+                                    fontSize: 13,
+                                    minHeight: 20,
+                                    padding: '2px 4px'
+                                },
+                                root: { height: 24 }
+                            }}
+                        />
                     );
                 } else {
                     return (
-                        <div style={getRowBackgroundColor(recordItem.quantity)}>
-                            <span 
-                                onClick={() => toggleEditMode(recordItem.id)}
-                                role="button"
-                                tabIndex={0}
-                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
-                                style={{cursor: 'pointer', fontWeight: 500, fontSize: 13}}
-                            >
-                                ${recordItem.amount.toFixed(2)}
-                            </span>
-                        </div>
+                        <span 
+                            onClick={() => toggleEditMode(recordItem.id)}
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
+                            style={{cursor: 'pointer', fontWeight: 500, fontSize: 13}}
+                        >
+                            ${recordItem.amount.toFixed(2)}
+                        </span>
                     );
                 }
             }
@@ -525,36 +534,32 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
 
                 if (isEditing) {
                     return (
-                        <div style={getRowBackgroundColor(recordItem.quantity)}>
-                            <Stack horizontal tokens={{ childrenGap: 8 }}>
-                                <PrimaryButton
-                                    text="Save"
-                                    onClick={() => saveRow(recordItem.id)}
-                                    styles={{
-                                        root: { minWidth: 40, height: 24, fontSize: 12 }
-                                    }}
-                                />
-                                <DefaultButton
-                                    text="Cancel"
-                                    onClick={() => toggleEditMode(recordItem.id)}
-                                    styles={{
-                                        root: { minWidth: 40, height: 24, fontSize: 12 }
-                                    }}
-                                />
-                            </Stack>
-                        </div>
+                        <Stack horizontal tokens={{ childrenGap: 8 }}>
+                            <PrimaryButton
+                                text="Save"
+                                onClick={() => saveRow(recordItem.id)}
+                                styles={{
+                                    root: { minWidth: 40, height: 20, fontSize: 11 }
+                                }}
+                            />
+                            <DefaultButton
+                                text="Cancel"
+                                onClick={() => toggleEditMode(recordItem.id)}
+                                styles={{
+                                    root: { minWidth: 40, height: 20, fontSize: 11 }
+                                }}
+                            />
+                        </Stack>
                     );
                 } else {
                     return (
-                        <div style={getRowBackgroundColor(recordItem.quantity)}>
-                            <DefaultButton
-                                text="Edit"
-                                onClick={() => toggleEditMode(recordItem.id)}
-                                styles={{
-                                    root: { minWidth: 40, height: 24, fontSize: 12 }
-                                }}
-                            />
-                        </div>
+                        <DefaultButton
+                            text="Edit"
+                            onClick={() => toggleEditMode(recordItem.id)}
+                            styles={{
+                                root: { minWidth: 40, height: 20, fontSize: 11 }
+                            }}
+                        />
                     );
                 }
             }
@@ -630,6 +635,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                     layoutMode={DetailsListLayoutMode.justified}
                     isHeaderVisible={true}
                     onShouldVirtualize={() => false}
+                    onRenderRow={onRenderRow}
                     styles={{
                         root: {
                             '& .ms-DetailsHeader': {
@@ -647,22 +653,20 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                                 borderBottom: '1px solid #ededed',
                                 minHeight: '28px',
                                 '&:hover': {
-                                    backgroundColor: '#f5f5f5'
-                                },
-                                '&.is-selected': {
-                                    backgroundColor: '#e3f2fd !important'
+                                    filter: 'brightness(0.95)'
                                 }
                             },
                             '& .ms-DetailsRow-cell': {
                                 fontSize: 13,
                                 padding: '2px 8px',
                                 minHeight: '28px',
+                                height: '28px',
                                 display: 'flex',
                                 alignItems: 'center'
                             },
                             '& .ms-Check': {
-                                height: '20px',
-                                width: '20px'
+                                height: '18px',
+                                width: '18px'
                             }
                         }
                     }}
