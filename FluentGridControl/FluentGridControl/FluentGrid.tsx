@@ -8,7 +8,12 @@ import {
     Spinner,
     DefaultButton,
     PrimaryButton,
-    IconButton
+    IconButton,
+    CommandBar,
+    ICommandBarItemProps,
+    Selection,
+    CheckboxVisibility,
+    DetailsListLayoutMode
 } from "@fluentui/react";
 import axios from "axios";
 
@@ -56,6 +61,7 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
     const [editing, setEditing] = React.useState<Record<string, Partial<RecordType>>>({});
     const [editingRows, setEditingRows] = React.useState<Set<string>>(new Set());
     const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
+    const [selectedItems, setSelectedItems] = React.useState<RecordType[]>([]);
 
     // Auto-expand groups when data changes (optional - for better UX)
     React.useEffect(() => {
@@ -64,6 +70,91 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             setExpandedGroups(new Set(productGroups));
         }
     }, [data]);
+
+    // ---------------- SELECTION ----------------
+    const selection = React.useMemo(() => {
+        const sel = new Selection({
+            onSelectionChanged: () => {
+                const selected = sel.getSelection() as GridItem[];
+                // Filter out group items and only include actual records
+                const selectedRecords = selected.filter((item: GridItem) => !('isGroup' in item)) as RecordType[];
+                setSelectedItems(selectedRecords);
+                console.log("Selected items:", selectedRecords);
+            },
+        });
+        return sel;
+    }, []);
+
+    // ---------------- COMMAND BAR ----------------
+    const commandBarItems: ICommandBarItemProps[] = [
+        {
+            key: 'edit',
+            text: 'Edit Selected',
+            iconProps: { iconName: 'Edit' },
+            disabled: selectedItems.length === 0,
+            onClick: () => {
+                console.log("Editing selected items:", selectedItems);
+                selectedItems.forEach((item: RecordType) => toggleEditMode(item.id));
+            },
+        },
+        {
+            key: 'delete',
+            text: 'Delete Selected',
+            iconProps: { iconName: 'Delete' },
+            disabled: selectedItems.length === 0,
+            onClick: () => {
+                console.log('Delete selected items:', selectedItems);
+                // Add your delete logic here
+                if (window.confirm(`Are you sure you want to delete ${selectedItems.length} selected item(s)?`)) {
+                    // Remove selected items from data
+                    const selectedIds = selectedItems.map(item => item.id);
+                    setData(prev => prev.filter(item => !selectedIds.includes(item.id)));
+                    selection.setAllSelected(false);
+                }
+            },
+        },
+        {
+            key: 'export',
+            text: 'Export Selected',
+            iconProps: { iconName: 'Download' },
+            disabled: selectedItems.length === 0,
+            onClick: () => {
+                console.log('Export selected items:', selectedItems);
+                // Add your export logic here
+                const csvContent = selectedItems.map(item => 
+                    `${item.product},${item.quantity},${item.amount}`
+                ).join('\n');
+                const header = 'Product,Quantity,Amount\n';
+                const blob = new Blob([header + csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'selected_items.csv';
+                a.click();
+            },
+        },
+    ];
+
+    const commandBarFarItems: ICommandBarItemProps[] = [
+        {
+            key: 'refresh',
+            text: 'Refresh',
+            iconProps: { iconName: 'Refresh' },
+            onClick: () => fetchData(),
+        },
+        {
+            key: 'selectAll',
+            text: selectedItems.length === data.length ? 'Clear Selection' : 'Select All',
+            iconProps: { iconName: selectedItems.length === data.length ? 'Clear' : 'SelectAll' },
+            onClick: () => {
+                if (selectedItems.length === data.length) {
+                    selection.setAllSelected(false);
+                } else {
+                    selection.setAllSelected(true);
+                }
+            },
+        },
+    ];
 
     // ---------------- FETCH ----------------
     const fetchData = React.useCallback(async () => {
@@ -233,11 +324,15 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
     // ---------------- CONDITIONAL STYLE ----------------
     const getQuantityStyle = (qty: number) => ({
         color: qty < 10 ? "red" : "green",
-        fontWeight: "600"
+        fontWeight: "600" as const
     });
 
     const getRowBackgroundColor = (qty: number) => ({
-        backgroundColor: qty < 10 ? "#ffebee" : "#e8f5e8"
+        backgroundColor: qty < 10 ? "#ffebee" : "#e8f5e8",
+        padding: "8px",
+        minHeight: "32px",
+        display: "flex" as const,
+        alignItems: "center" as const
     });
 
     // ---------------- COLUMNS ----------------
@@ -247,9 +342,9 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             key: "product",
             name: "Product",
             minWidth: 200,
-            onRender: item => {
-
-                if (item.isGroup) {
+            isResizable: true,
+            onRender: (item: GridItem) => {
+                if ('isGroup' in item && item.isGroup) {
                     const isExpanded = expandedGroups.has(item.key);
                     return (
                         <Stack 
@@ -258,10 +353,12 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                             tokens={{ childrenGap: 8 }}
                             styles={{
                                 root: {
-                                    backgroundColor: '#f3f2f1',
-                                    padding: '4px 8px',
+                                    backgroundColor: '#f8f9fa',
+                                    padding: '8px 12px',
                                     borderRadius: '4px',
-                                    border: '1px solid #edebe9'
+                                    border: '1px solid #dee2e6',
+                                    fontWeight: 600,
+                                    color: '#495057'
                                 }
                             }}
                         >
@@ -281,18 +378,29 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                     );
                 }
 
+                const recordItem = item as RecordType;
                 // Product name is read-only, not editable
                 return (
-                    <div style={getRowBackgroundColor(item.quantity)}>
-                        <span>{item.product}</span>
+                    <div style={{
+                        ...getRowBackgroundColor(recordItem.quantity),
+                        fontWeight: 500
+                    }}>
+                        <span>{recordItem.product}</span>
                     </div>
                 );
             },
             onRenderHeader: () => (
-                <TextField
-                    placeholder="Filter Product"
-                    onChange={(_, v) => setFilter("product", v || "")}
-                />
+                <Stack>
+                    <span style={{ fontWeight: 600, marginBottom: 4 }}>Product</span>
+                    <TextField
+                        placeholder="Filter Product"
+                        onChange={(_, v) => setFilter("product", v || "")}
+                        styles={{
+                            root: { marginTop: 4 },
+                            field: { fontSize: 12 }
+                        }}
+                    />
+                </Stack>
             )
         },
 
@@ -300,38 +408,43 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             key: "quantity",
             name: "Quantity",
             minWidth: 100,
-            onRender: item => {
-
-                if (item.isGroup) {
-                    return <strong>Total: {item.totalQuantity}</strong>;
+            isResizable: true,
+            onRender: (item: GridItem) => {
+                if ('isGroup' in item && item.isGroup) {
+                    return (
+                        <div style={{ fontWeight: 600, color: '#495057' }}>
+                            <strong>Total: {item.totalQuantity}</strong>
+                        </div>
+                    );
                 }
 
-                const isEditing = editingRows.has(item.id);
+                const recordItem = item as RecordType;
+                const isEditing = editingRows.has(recordItem.id);
                 
                 if (isEditing) {
                     return (
-                        <div style={getRowBackgroundColor(item.quantity)}>
+                        <div style={getRowBackgroundColor(recordItem.quantity)}>
                             <TextField
                                 type="number"
-                                value={(editing[item.id]?.quantity ?? item.quantity).toString()}
-                                onChange={(_, v) => updateField(item.id, "quantity", Number(v))}
+                                value={(editing[recordItem.id]?.quantity ?? recordItem.quantity).toString()}
+                                onChange={(_, v) => updateField(recordItem.id, "quantity", Number(v))}
                                 styles={{
-                                    field: getQuantityStyle(item.quantity)
+                                    field: getQuantityStyle(recordItem.quantity)
                                 }}
                             />
                         </div>
                     );
                 } else {
                     return (
-                        <div style={getRowBackgroundColor(item.quantity)}>
+                        <div style={getRowBackgroundColor(recordItem.quantity)}>
                             <span 
-                                style={{...getQuantityStyle(item.quantity), cursor: 'pointer'}}
-                                onClick={() => toggleEditMode(item.id)}
+                                style={{...getQuantityStyle(recordItem.quantity), cursor: 'pointer'}}
+                                onClick={() => toggleEditMode(recordItem.id)}
                                 role="button"
                                 tabIndex={0}
-                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(item.id)}
+                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
                             >
-                                {item.quantity}
+                                {recordItem.quantity}
                             </span>
                         </div>
                     );
@@ -343,35 +456,43 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             key: "amount",
             name: "Amount",
             minWidth: 120,
-            onRender: item => {
-
-                if (item.isGroup) {
-                    return <strong>Total: ${item.totalAmount.toFixed(2)}</strong>;
+            isResizable: true,
+            onRender: (item: GridItem) => {
+                if ('isGroup' in item && item.isGroup) {
+                    return (
+                        <div style={{ fontWeight: 600, color: '#495057' }}>
+                            <strong>Total: ${item.totalAmount.toFixed(2)}</strong>
+                        </div>
+                    );
                 }
 
-                const isEditing = editingRows.has(item.id);
+                const recordItem = item as RecordType;
+                const isEditing = editingRows.has(recordItem.id);
                 
                 if (isEditing) {
                     return (
-                        <div style={getRowBackgroundColor(item.quantity)}>
+                        <div style={getRowBackgroundColor(recordItem.quantity)}>
                             <TextField
                                 type="number"
-                                value={(editing[item.id]?.amount ?? item.amount).toString()}
-                                onChange={(_, v) => updateField(item.id, "amount", Number(v))}
+                                value={(editing[recordItem.id]?.amount ?? recordItem.amount).toString()}
+                                onChange={(_, v) => updateField(recordItem.id, "amount", Number(v))}
+                                styles={{
+                                    field: { fontWeight: 500 }
+                                }}
                             />
                         </div>
                     );
                 } else {
                     return (
-                        <div style={getRowBackgroundColor(item.quantity)}>
+                        <div style={getRowBackgroundColor(recordItem.quantity)}>
                             <span 
-                                onClick={() => toggleEditMode(item.id)}
+                                onClick={() => toggleEditMode(recordItem.id)}
                                 role="button"
                                 tabIndex={0}
-                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(item.id)}
-                                style={{cursor: 'pointer'}}
+                                onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
+                                style={{cursor: 'pointer', fontWeight: 500}}
                             >
-                                ${item.amount.toFixed(2)}
+                                ${recordItem.amount.toFixed(2)}
                             </span>
                         </div>
                     );
@@ -382,34 +503,44 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
         {
             key: "actions",
             name: "Actions",
-            minWidth: 100,
-            onRender: item => {
+            minWidth: 120,
+            isResizable: false,
+            onRender: (item: GridItem) => {
+                if ('isGroup' in item && item.isGroup) return null;
 
-                if (item.isGroup) return null;
-
-                const isEditing = editingRows.has(item.id);
+                const recordItem = item as RecordType;
+                const isEditing = editingRows.has(recordItem.id);
 
                 if (isEditing) {
                     return (
-                        <div style={getRowBackgroundColor(item.quantity)}>
+                        <div style={getRowBackgroundColor(recordItem.quantity)}>
                             <Stack horizontal tokens={{ childrenGap: 8 }}>
                                 <PrimaryButton
                                     text="Save"
-                                    onClick={() => saveRow(item.id)}
+                                    onClick={() => saveRow(recordItem.id)}
+                                    styles={{
+                                        root: { minWidth: 50, height: 28 }
+                                    }}
                                 />
                                 <DefaultButton
                                     text="Cancel"
-                                    onClick={() => toggleEditMode(item.id)}
+                                    onClick={() => toggleEditMode(recordItem.id)}
+                                    styles={{
+                                        root: { minWidth: 50, height: 28 }
+                                    }}
                                 />
                             </Stack>
                         </div>
                     );
                 } else {
                     return (
-                        <div style={getRowBackgroundColor(item.quantity)}>
+                        <div style={getRowBackgroundColor(recordItem.quantity)}>
                             <DefaultButton
                                 text="Edit"
-                                onClick={() => toggleEditMode(item.id)}
+                                onClick={() => toggleEditMode(recordItem.id)}
+                                styles={{
+                                    root: { minWidth: 60, height: 28 }
+                                }}
                             />
                         </div>
                     );
@@ -438,33 +569,120 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
     console.log("FluentGrid: DetailsList will render with", groupedData.length, "items");
     
     return (
-        <Stack tokens={{ childrenGap: 10 }}>
-
-            {loading && <Spinner label="Loading..." />}
-
-            {/* GRID */}
-            <DetailsList
-                items={groupedData}
-                columns={columns}
-                selectionMode={SelectionMode.none}
-                onShouldVirtualize={() => true}
+        <Stack tokens={{ childrenGap: 0 }}>
+            
+            {/* COMMAND BAR */}
+            <CommandBar
+                items={commandBarItems}
+                farItems={commandBarFarItems}
+                styles={{
+                    root: {
+                        backgroundColor: '#f8f9fa',
+                        borderBottom: '1px solid #dee2e6',
+                        padding: '0 16px'
+                    }
+                }}
             />
 
+            {loading && (
+                <Stack horizontalAlign="center" styles={{ root: { padding: 20 } }}>
+                    <Spinner label="Loading..." />
+                </Stack>
+            )}
+
+            {/* SELECTION INFO */}
+            {selectedItems.length > 0 && (
+                <div style={{
+                    backgroundColor: '#e3f2fd',
+                    padding: '8px 16px',
+                    borderBottom: '1px solid #dee2e6',
+                    fontSize: '14px',
+                    color: '#1976d2'
+                }}>
+                    {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
+                </div>
+            )}
+
+            {/* GRID */}
+            <div style={{ 
+                border: '1px solid #dee2e6', 
+                borderTop: selectedItems.length > 0 ? 'none' : '1px solid #dee2e6',
+                backgroundColor: 'white'
+            }}>
+                <DetailsList
+                    items={groupedData}
+                    columns={columns}
+                    selectionMode={SelectionMode.multiple}
+                    selection={selection}
+                    checkboxVisibility={CheckboxVisibility.always}
+                    layoutMode={DetailsListLayoutMode.justified}
+                    isHeaderVisible={true}
+                    onShouldVirtualize={() => false}
+                    styles={{
+                        root: {
+                            '& .ms-DetailsHeader': {
+                                backgroundColor: '#f8f9fa',
+                                borderBottom: '2px solid #dee2e6'
+                            },
+                            '& .ms-DetailsHeader-cell': {
+                                fontSize: 14,
+                                fontWeight: 600,
+                                color: '#495057'
+                            },
+                            '& .ms-DetailsRow': {
+                                borderBottom: '1px solid #ededed',
+                                '&:hover': {
+                                    backgroundColor: '#f5f5f5'
+                                },
+                                '&.is-selected': {
+                                    backgroundColor: '#e3f2fd !important'
+                                }
+                            },
+                            '& .ms-DetailsRow-cell': {
+                                fontSize: 14,
+                                padding: '4px 8px'
+                            }
+                        }
+                    }}
+                />
+            </div>
+
             {/* PAGINATION */}
-            <Stack horizontal tokens={{ childrenGap: 10 }}>
-
-                <DefaultButton
-                    text="Prev"
-                    onClick={() => changePage(request.page - 1)}
-                />
-
-                <div>Page {request.page}</div>
-
-                <DefaultButton
-                    text="Next"
-                    onClick={() => changePage(request.page + 1)}
-                />
-
+            <Stack 
+                horizontal 
+                horizontalAlign="space-between" 
+                verticalAlign="center"
+                tokens={{ childrenGap: 10 }}
+                styles={{
+                    root: {
+                        backgroundColor: '#f8f9fa',
+                        borderTop: '1px solid #dee2e6',
+                        padding: '12px 16px'
+                    }
+                }}
+            >
+                <Stack horizontal tokens={{ childrenGap: 10 }}>
+                    <DefaultButton
+                        text="Previous"
+                        iconProps={{ iconName: 'ChevronLeft' }}
+                        onClick={() => changePage(request.page - 1)}
+                        disabled={request.page <= 1}
+                    />
+                    <DefaultButton
+                        text="Next"
+                        iconProps={{ iconName: 'ChevronRight' }}
+                        onClick={() => changePage(request.page + 1)}
+                        disabled={request.page >= totalPages}
+                    />
+                </Stack>
+                
+                <span style={{ fontSize: 14, color: '#495057' }}>
+                    Page {request.page} of {totalPages}
+                </span>
+                
+                <span style={{ fontSize: 14, color: '#6c757d' }}>
+                    Total: {data.length} items
+                </span>
             </Stack>
 
         </Stack>
