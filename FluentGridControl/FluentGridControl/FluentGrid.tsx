@@ -7,7 +7,8 @@ import {
     TextField,
     Spinner,
     DefaultButton,
-    PrimaryButton
+    PrimaryButton,
+    IconButton
 } from "@fluentui/react";
 import axios from "axios";
 
@@ -53,6 +54,15 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
     });
 
     const [editing, setEditing] = React.useState<Record<string, Partial<RecordType>>>({});
+    const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
+
+    // Auto-expand groups when data changes (optional - for better UX)
+    React.useEffect(() => {
+        if (data && data.length > 0) {
+            const productGroups = [...new Set(data.map(item => item.product))];
+            setExpandedGroups(new Set(productGroups));
+        }
+    }, [data]);
 
     // ---------------- FETCH ----------------
     const fetchData = React.useCallback(async () => {
@@ -120,6 +130,19 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
         }
     };
 
+    // ---------------- GROUP EXPAND/COLLAPSE ----------------
+    const toggleGroup = (groupKey: string) => {
+        setExpandedGroups(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(groupKey)) {
+                newSet.delete(groupKey);
+            } else {
+                newSet.add(groupKey);
+            }
+            return newSet;
+        });
+    };
+
     // ---------------- SAVE ----------------
     const saveRow = async (id: string) => {
         const changes = editing[id];
@@ -173,16 +196,19 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                 totalAmount
             });
 
-            items.forEach(item => {
-                console.log(`FluentGrid: Adding item to result:`, item);
-                result.push(item);
-            });
+            // Only add child items if the group is expanded
+            if (expandedGroups.has(key)) {
+                items.forEach(item => {
+                    console.log(`FluentGrid: Adding item to result:`, item);
+                    result.push(item);
+                });
+            }
         });
 
         console.log("FluentGrid: Final grouped result:", result);
         return result;
 
-    }, [data]);
+    }, [data, expandedGroups]);
 
     // ---------------- CONDITIONAL STYLE ----------------
     const getQuantityStyle = (qty: number) => ({
@@ -200,7 +226,35 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             onRender: item => {
 
                 if (item.isGroup) {
-                    return <strong>{item.product}</strong>;
+                    const isExpanded = expandedGroups.has(item.key);
+                    return (
+                        <Stack 
+                            horizontal 
+                            verticalAlign="center" 
+                            tokens={{ childrenGap: 8 }}
+                            styles={{
+                                root: {
+                                    backgroundColor: '#f3f2f1',
+                                    padding: '4px 8px',
+                                    borderRadius: '4px',
+                                    border: '1px solid #edebe9'
+                                }
+                            }}
+                        >
+                            <IconButton
+                                iconProps={{ iconName: isExpanded ? 'ChevronDown' : 'ChevronRight' }}
+                                onClick={() => toggleGroup(item.key)}
+                                styles={{ 
+                                    root: { 
+                                        width: 24, 
+                                        height: 24,
+                                        minWidth: 24
+                                    } 
+                                }}
+                            />
+                            <strong>{item.name} ({item.count} items)</strong>
+                        </Stack>
+                    );
                 }
 
                 return (
