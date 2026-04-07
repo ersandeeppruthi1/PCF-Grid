@@ -431,7 +431,11 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             width: "100%",
             overflow: "hidden",
             display: "flex",
-            flexDirection: "column"
+            flexDirection: "column",
+            border: "1px solid #d1d1d1",
+            borderRadius: "8px",
+            backgroundColor: "#ffffff",
+            boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
         }}>
 
             <CommandBar items={commandBarItems} />
