@@ -46,29 +46,30 @@ export class FluentGridControl implements ComponentFramework.StandardControl<IIn
     }
 
     public updateView(context: ComponentFramework.Context<IInputs>): void {
-console.log("HI4 dsdasdsf sdfdf");
+        console.log("HI4 dsdasdsf sdfdf");
         const dataset = context.parameters.dataset;
-    if (dataset.loading || dataset.error) return;
+        if (dataset.loading || dataset.error) return;
 
-    const datasetChanged = context.updatedProperties.indexOf("dataset") > -1;
-    
-    if (!datasetChanged && this.isRendered) return; 
+        const datasetChanged = context.updatedProperties.indexOf("dataset") > -1;
+
+        if (!datasetChanged && this.isRendered) return;
 
         let records: RecordType[] = [];
 
         if (dataset.sortedRecordIds.length > 0) {
             records = dataset.sortedRecordIds.map(id => {
                 const record = dataset.records[id];
-console.log("HI5 dsdasdsf sdfdf", record);
+                console.log("HI5 dsdasdsf sdfdf", record);
                 const productRef = record.getValue("productname") as ComponentFramework.LookupValue[] | null;
                 const productName =
                     productRef?.[0]?.name ??
                     String(record.getValue("productname") ?? "N/A");
 
-                const categoryRef = record.getValue("new_categoryid") as ComponentFramework.LookupValue[] | null;
-                const categoryName =
-                    categoryRef?.[0]?.name ??
-                    String(record.getValue("new_categoryid") ?? "General");
+                const categoryRef = record.getValue("new_categoryid") as ComponentFramework.LookupValue | null;
+                const categoryName = categoryRef?.name ?? "General";
+                console.log("Category Ref:");
+                console.log(categoryRef);
+                console.log(categoryRef?.name);
 
                 return {
                     id: id,
