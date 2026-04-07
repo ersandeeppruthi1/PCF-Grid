@@ -168,22 +168,14 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             key: "product",
             name: "Product",
             fieldName: "product",
-            minWidth: 200,
-            maxWidth: 200,
+            minWidth: 259,
+            maxWidth: 259,
             isResizable: false,
             onRender: (item: RecordType) => (
-                <div style={{ width: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {editingRows.has(item.id) ? (
-                        <TextField
-                            value={item.product}
-                            onChange={(_, v) => updateField(item.id, "product", v || "")}
-                            styles={{ root: { width: '100%' } }}
-                        />
-                    ) : (
-                        <span onClick={() => toggleEdit(item.id)} style={{ cursor: 'pointer' }}>
-                            {item.product || "Unnamed"}
-                        </span>
-                    )}
+                <div style={{ width: '259px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ cursor: 'default' }}>
+                        {item.product || "Unnamed"}
+                    </span>
                 </div>
             )
         },
@@ -232,27 +224,11 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             maxWidth: 120,
             isResizable: false,
             onRender: (item: RecordType) => {
-
-                const options: IDropdownOption[] = [
-                    { key: 'Open', text: 'Open' },
-                    { key: 'Active', text: 'Active' },
-                    { key: 'Resolved', text: 'Resolved' }
-                ];
-
                 return (
                     <div style={{ width: '120px' }}>
-                        {editingRows.has(item.id) ? (
-                            <Dropdown
-                                options={options}
-                                selectedKey={item.status}
-                                onChange={(_, o) => o?.key && updateField(item.id, "status", o.key)}
-                                styles={{ root: { width: '100%' } }}
-                            />
-                        ) : (
-                            <span onClick={() => toggleEdit(item.id)} style={{ cursor: 'pointer' }}>
-                                {item.status}
-                            </span>
-                        )}
+                        <span style={{ cursor: 'default' }}>
+                            {item.status}
+                        </span>
                     </div>
                 );
             }
@@ -266,22 +242,9 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             isResizable: false,
             onRender: (item: RecordType) => (
                 <div style={{ width: '100px' }}>
-                    {editingRows.has(item.id) ? (
-                        <Dropdown
-                            options={[
-                                { key: "Hardware", text: "Hardware" },
-                                { key: "Software", text: "Software" },
-                                { key: "Service", text: "Service" }
-                            ]}
-                            selectedKey={item.category}
-                            onChange={(_, opt) => opt && updateField(item.id, "category", opt.key as string)}
-                            styles={{ root: { width: '100%' } }}
-                        />
-                    ) : (
-                        <span onClick={() => toggleEdit(item.id)} style={{ cursor: 'pointer' }}>
-                            {item.category}
-                        </span>
-                    )}
+                    <span style={{ cursor: 'default' }}>
+                        {item.category}
+                    </span>
                 </div>
             )
         }
@@ -349,8 +312,8 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         {...props} 
                                         styles={{
                                             root: {
-                                                backgroundColor: '#0078d4',
-                                                color: 'white',
+                                                backgroundColor: '#f3f2f1',
+                                                color: '#323130',
                                                 padding: '0',
                                                 margin: '0',
                                                 fontWeight: 600,
@@ -382,7 +345,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         <div style={{ 
                                             width: '80px',
                                             textAlign: 'right',
-                                            color: 'white',
+                                            color: '#323130',
                                             fontSize: '12px',
                                             fontWeight: 600,
                                             paddingRight: '16px',
@@ -395,7 +358,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         <div style={{ 
                                             width: '100px',
                                             textAlign: 'right',
-                                            color: 'white',
+                                            color: '#323130',
                                             fontSize: '12px',
                                             fontWeight: 600,
                                             paddingRight: '16px',
