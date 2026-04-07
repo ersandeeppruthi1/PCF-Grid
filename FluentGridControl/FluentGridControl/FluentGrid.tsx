@@ -42,6 +42,39 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
     const [selectedItems, setSelectedItems] = React.useState<RecordType[]>([]);
     const [filterText, setFilterText] = React.useState("");
 
+    // Add CSS to override FluentUI background colors
+    React.useEffect(() => {
+        const styleId = 'fluent-grid-row-colors';
+        let styleElement = document.getElementById(styleId) as HTMLStyleElement;
+        
+        if (!styleElement) {
+            styleElement = document.createElement('style');
+            styleElement.id = styleId;
+            document.head.appendChild(styleElement);
+        }
+        
+        styleElement.innerHTML = `
+            .ms-DetailsList [class*="root-"] {
+                background-color: transparent !important;
+            }
+            .ms-DetailsList .ms-DetailsRow {
+                background-color: transparent !important;
+            }
+            .fluent-grid-row-red {
+                background-color: #ffcccb !important;
+            }
+            .fluent-grid-row-green {
+                background-color: #90ee90 !important;
+            }
+        `;
+        
+        return () => {
+            if (styleElement && styleElement.parentNode) {
+                styleElement.parentNode.removeChild(styleElement);
+            }
+        };
+    }, []);
+
     // ---------------- SELECTION ----------------
     const selectionRef = React.useRef(
         new Selection({
@@ -245,7 +278,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
     // ---------------- UI ----------------
     return (
         <div style={{
-            height: "100vh",
+            // height: "100vh",
             width: "100%",
             overflow: "hidden",
             display: "flex",
@@ -281,12 +314,12 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                         if (!props) return null;
 
                         const record = props.item as RecordType;
-                        const rowStyle = record.quantity < 10
-                            ? { backgroundColor: "#ffebee" }
-                            : { backgroundColor: "#e8f5e8" };
+                        const className = record.quantity < 10
+                            ? "fluent-grid-row-red"    // Light red for qty < 10
+                            : "fluent-grid-row-green"; // Light green for qty >= 10
 
                         return (
-                            <div style={rowStyle}>
+                            <div className={className}>
                                 {defaultRender ? defaultRender(props) : null}
                             </div>
                         );
