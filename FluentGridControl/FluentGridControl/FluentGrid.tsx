@@ -371,7 +371,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         pointerEvents: 'none'
                                     }}>
                                         {/* Checkbox + expand icon space */}
-                                        <div style={{ width: '90px' }}></div>
+                                        <div style={{ width: '128px' }}></div>
                                         
                                         {/* Product column - skip */}
                                         <div style={{ width: '200px' }}></div>
