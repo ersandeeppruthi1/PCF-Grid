@@ -59,7 +59,6 @@ export class FluentGridControl implements ComponentFramework.StandardControl<IIn
         if (dataset.sortedRecordIds.length > 0) {
             records = dataset.sortedRecordIds.map(id => {
                 const record = dataset.records[id];
-                console.log("HI5 dsdasdsf sdfdf", record);
                 const productRef = record.getValue("productname") as ComponentFramework.LookupValue[] | null;
                 const productName =
                     productRef?.[0]?.name ??
@@ -67,9 +66,6 @@ export class FluentGridControl implements ComponentFramework.StandardControl<IIn
 
                 const categoryRef = record.getValue("new_categoryid") as ComponentFramework.LookupValue | null;
                 const categoryName = categoryRef?.name ?? "General";
-                console.log("Category Ref:");
-                console.log(categoryRef);
-                console.log(categoryRef?.name);
 
                 return {
                     id: id,

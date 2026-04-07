@@ -114,7 +114,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
         const map = new Map<string, RecordType[]>();
 
         filtered.forEach(item => {
-            const key = item.product || "Unnamed";
+            const key = item.category || "Uncategorized";
             if (!map.has(key)) map.set(key, []);
             map.get(key)!.push(item);
         });
@@ -158,10 +158,10 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
     const columns: IColumn[] = [
         {
             key: "product",
-            name: "Product1",
+            name: "Product",
             fieldName: "product",
-            minWidth: 318,
-            maxWidth: 318,
+            minWidth: 275,
+            maxWidth: 275,
             isResizable: false,
             onRender: (item: RecordType) => (
                 <div style={{ width: '259px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -188,7 +188,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                             styles={{ root: { width: '100%' } }}
                         />
                     ) : (
-                        <span onClick={() => toggleEdit(item.id)} style={{ cursor: 'pointer' }}>
+                        <span onClick={() => toggleEdit(item.id)} style={{ cursor: 'pointer', paddingRight: '65px' }}>
                             {item.quantity}
                         </span>
                     )}
@@ -203,7 +203,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             maxWidth: 100,
             isResizable: false,
             onRender: (item: RecordType) => (
-                <div style={{ width: '100px', textAlign: 'right' }}>
+                <div style={{ width: '100px', textAlign: 'right', paddingRight: '47px' }}>
                     <span>${item.amount.toFixed(2)}</span>
                 </div>
             )
@@ -217,7 +217,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             isResizable: false,
             onRender: (item: RecordType) => {
                 return (
-                    <div style={{ width: '120px' }}>
+                    <div style={{ width: '120px', textAlign: 'center' }}>
                         <span style={{ cursor: 'default' }}>
                             {item.status}
                         </span>
@@ -331,7 +331,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         <div style={{ width: '48px' }}></div>
                                         
                                         {/* Product column - skip */}
-                                        <div style={{ width: '317px' }}></div>
+                                        <div style={{ width: '270px' }}></div>
                                         
                                         {/* Quantity column total */}
                                         <div style={{ 
@@ -348,7 +348,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         
                                         {/* Amount column total */}
                                         <div style={{ 
-                                            width: '100px',
+                                            width: '113px',
                                             textAlign: 'right',
                                             color: '#323130',
                                             fontSize: '12px',
