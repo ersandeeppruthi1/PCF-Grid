@@ -88,25 +88,6 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
     // ---------------- COMMAND BAR ----------------
     const commandBarItems: ICommandBarItemProps[] = [
         {
-            key: 'new',
-            text: 'New',
-            iconProps: { iconName: 'Add' },
-            onClick: () => {
-                const newRecord: RecordType = {
-                    id: Date.now().toString(),
-                    product: '',
-                    quantity: 0,
-                    amount: 0,
-                    status: 'Active',
-                    category: '',
-                    isDirty: true
-                };
-                setData(prev => [newRecord, ...prev]);
-                setEditingRows(prev => new Set([...prev, newRecord.id]));
-                setDirtyRecords(prev => new Set([...prev, newRecord.id]));
-            }
-        },
-        {
             key: 'refresh',
             text: 'Refresh',
             iconProps: { iconName: 'Refresh' },
@@ -120,7 +101,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                     // Dynamics 365 Web API call to fetch fresh data
                     const entityName = "salesorderdetails"; // Replace with your actual entity logical name
                     const baseUrl = "https://orgc6359062.crm8.dynamics.com";
-                    const apiUrl = `${baseUrl}/api/data/v9.2/${entityName}?$select=salesorderdetailid,quantity,extendedamount,productname`;
+                    const apiUrl = `${baseUrl}/api/data/v9.2/${entityName}?$select=salesorderdetailid,quantity,extendedamount,productname,_new_categoryid_value&$expand=new_categoryid($select=title)`;
                     
                     const response = await fetch(apiUrl, {
                         method: 'GET',
@@ -145,7 +126,10 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                         quantity?: number;
                         extendedamount?: number;
                         productname?: string;
-                        categoryname?: string;
+                        _new_categoryid_value?: string;
+                        new_categoryid?: {
+                            title: string;
+                        };
                     }
                     
                     // Transform server data to our RecordType format
@@ -155,7 +139,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                         quantity: item.quantity || 0,
                         amount: item.extendedamount || 0,
                         status: 'Active', // Default status since statuscode field doesn't exist
-                        category: item.categoryname || "General", // Add category mapping as needed
+                        category: item.new_categoryid?.title || "General", // Get category title from expanded lookup
                         isDirty: false
                     }));
                     
