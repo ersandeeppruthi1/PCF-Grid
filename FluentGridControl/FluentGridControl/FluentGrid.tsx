@@ -110,20 +110,81 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             key: 'refresh',
             text: 'Refresh',
             iconProps: { iconName: 'Refresh' },
-            onClick: () => {
-                // Refresh the grid data
-                console.log("Refreshing grid data");
-                // Reset to initial data or trigger data reload
-                if (initialData) {
-                    setData(initialData);
+            onClick: async () => {
+                try {
+                    console.log("Refreshing grid data from server...");
+                    
+                    // Show loading state (optional)
+                    // setLoading(true);
+                    
+                    // Dynamics 365 Web API call to fetch fresh data
+                    const entityName = "salesorderdetails"; // Replace with your actual entity logical name
+                    const baseUrl = "https://orgc6359062.crm8.dynamics.com";
+                    const apiUrl = `${baseUrl}/api/data/v9.2/${entityName}?$select=salesorderdetailid,quantity,extendedamount,productname`;
+                    
+                    const response = await fetch(apiUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'OData-MaxVersion': '4.0',
+                            'OData-Version': '4.0',
+                            'Prefer': 'odata.include-annotations="*"'
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`Failed to fetch data: ${response.status} - ${errorText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    // Define interface for server response
+                    interface ServerRecord {
+                        salesorderdetailid: string;
+                        quantity?: number;
+                        extendedamount?: number;
+                        productname?: string;
+                        categoryname?: string;
+                    }
+                    
+                    // Transform server data to our RecordType format
+                    const refreshedData: RecordType[] = result.value.map((item: ServerRecord) => ({
+                        id: item.salesorderdetailid,
+                        product: item.productname || "Unknown Product",
+                        quantity: item.quantity || 0,
+                        amount: item.extendedamount || 0,
+                        status: 'Active', // Default status since statuscode field doesn't exist
+                        category: item.categoryname || "General", // Add category mapping as needed
+                        isDirty: false
+                    }));
+                    
+                    // Update the grid with fresh server data
+                    setData(refreshedData);
+                    
+                    // Clear all editing states
+                    setEditingRows(new Set());
+                    setDirtyRecords(new Set());
+                    setSelectedItems([]);
+                    setFilterText("");
+                    
+                    console.log(`Successfully refreshed ${refreshedData.length} records from server`);
+                    
+                } catch (error) {
+                    console.error("Error refreshing data from server:", error);
+                    
+                    // Fallback to initial data if server call fails
+                    if (initialData) {
+                        console.log("Falling back to initial data");
+                        setData(initialData);
+                        setEditingRows(new Set());
+                        setDirtyRecords(new Set());
+                        setSelectedItems([]);
+                        setFilterText("");
+                    }
+                    
+                    alert("Failed to refresh data from server. Please check your connection and try again.");
                 }
-                setEditingRows(new Set());
-                setDirtyRecords(new Set());
-                setSelectedItems([]);
-                setFilterText("");
-                
-                // If you have a callback to parent component for data refresh, call it here
-                // onRefresh?.();
             }
         },
         // Show Update and Cancel buttons when there are editing rows
@@ -438,7 +499,17 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)"
         }}>
 
-            <CommandBar items={commandBarItems} />
+            <CommandBar 
+                items={commandBarItems} 
+                styles={{
+                    root: {
+                        borderBottom: "1px solid #d1d1d1",
+                        height: "40px",
+                        minHeight: "40px",
+                        padding: "0 8px"
+                    }
+                }}
+            />
 
             <div style={{
                 flex: 1,
