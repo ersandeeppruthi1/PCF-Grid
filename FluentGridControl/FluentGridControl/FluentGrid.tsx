@@ -14,8 +14,13 @@ import {
     Selection,
     CheckboxVisibility,
     DetailsListLayoutMode,
-    DetailsRow,
-    IDetailsRowProps
+    IGroup,
+    IGroupHeaderProps,
+    GroupHeader,
+    Icon,
+    TooltipHost,
+    Dropdown,
+    IDropdownOption
 } from "@fluentui/react";
 import axios from "axios";
 
@@ -24,194 +29,192 @@ interface RecordType {
     product: string;
     quantity: number;
     amount: number;
+    status: 'Active' | 'Inactive' | 'Pending';
+    category: string;
+    lastModified?: Date;
+    owner?: string;
+    isDirty?: boolean; // Track unsaved changes
 }
 
-interface GroupHeaderType {
-    isGroup: true;
-    key: string;
-    name: string;
-    count: number;
-    totalQuantity: number;
-    totalAmount: number;
-}
-
-type GridItem = RecordType | GroupHeaderType;
-
-interface FluentGridProps {
+interface CRMGridProps {
     data?: RecordType[];
     context?: ComponentFramework.Context<unknown>;
+    onSave?: (records: RecordType[]) => Promise<void>;
+    onDelete?: (recordIds: string[]) => Promise<void>;
 }
 
-export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, context }) => {
-    console.log("FluentGrid: Component rendered");
-    console.log("FluentGrid: initialData:", initialData);
-    console.log("FluentGrid: context:", context);
+export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData, context, onSave, onDelete }) => {
+    console.log("CRMGrid: Component rendered");
+    console.log("CRMGrid: initialData:", initialData);
+    console.log("CRMGrid: context:", context);
 
     // ---------------- STATE ----------------
     const [data, setData] = React.useState<RecordType[]>(initialData || []);
     const [loading, setLoading] = React.useState(false);
-
-    console.log("FluentGrid: Current data state:", data);
-    console.log("FluentGrid: Current loading state:", loading);
-
-    const [request, setRequest] = React.useState({
-        page: 1,
-        pageSize: 25,
-        filters: {} as Record<string, unknown>
-    });
-
     const [editing, setEditing] = React.useState<Record<string, Partial<RecordType>>>({});
     const [editingRows, setEditingRows] = React.useState<Set<string>>(new Set());
-    const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
     const [selectedItems, setSelectedItems] = React.useState<RecordType[]>([]);
+    const [dirtyRecords, setDirtyRecords] = React.useState<Set<string>>(new Set());
+    const [sortBy, setSortBy] = React.useState<{ key: string; descending: boolean } | null>(null);
+    const [filterText, setFilterText] = React.useState<string>('');
 
-    // Auto-expand groups when data changes (optional - for better UX)
-    React.useEffect(() => {
-        if (data && data.length > 0) {
-            const productGroups = [...new Set(data.map(item => item.product))];
-            setExpandedGroups(new Set(productGroups));
-        }
-    }, [data]);
+    console.log("CRMGrid: Current data state:", data);
+    console.log("CRMGrid: Current loading state:", loading);
 
     // ---------------- SELECTION ----------------
     const selection = React.useMemo(() => {
         const sel = new Selection({
             onSelectionChanged: () => {
-                const selected = sel.getSelection() as GridItem[];
-                // Filter out group items and only include actual records
-                const selectedRecords = selected.filter((item: GridItem) => !('isGroup' in item)) as RecordType[];
-                setSelectedItems(selectedRecords);
-                console.log("Selected items:", selectedRecords);
+                const selected = sel.getSelection() as RecordType[];
+                setSelectedItems(selected);
+                console.log("Selected items:", selected);
             },
         });
         return sel;
     }, []);
 
-    // ---------------- COMMAND BAR ----------------
+    // ---------------- COMMAND BAR (CRM Style) ----------------
     const commandBarItems: ICommandBarItemProps[] = [
         {
-            key: 'edit',
-            text: 'Edit Selected',
-            iconProps: { iconName: 'Edit' },
-            disabled: selectedItems.length === 0,
+            key: 'new',
+            text: 'New',
+            iconProps: { iconName: 'Add' },
             onClick: () => {
-                console.log("Editing selected items:", selectedItems);
-                selectedItems.forEach((item: RecordType) => toggleEditMode(item.id));
+                console.log("Creating new record");
+                // Add new record logic
+                const newRecord: RecordType = {
+                    id: `new-${Date.now()}`,
+                    product: '',
+                    quantity: 0,
+                    amount: 0,
+                    status: 'Active',
+                    category: '',
+                    isDirty: true
+                };
+                setData(prev => [newRecord, ...prev]);
+                setEditingRows(prev => new Set([...prev, newRecord.id]));
+                setDirtyRecords(prev => new Set([...prev, newRecord.id]));
+            },
+        },
+        {
+            key: 'edit',
+            text: 'Edit',
+            iconProps: { iconName: 'Edit' },
+            disabled: selectedItems.length !== 1,
+            onClick: () => {
+                if (selectedItems.length === 1) {
+                    toggleEditMode(selectedItems[0].id);
+                }
             },
         },
         {
             key: 'delete',
-            text: 'Delete Selected',
+            text: 'Delete',
             iconProps: { iconName: 'Delete' },
             disabled: selectedItems.length === 0,
-            onClick: () => {
-                console.log('Delete selected items:', selectedItems);
-                // Add your delete logic here
-                if (window.confirm(`Are you sure you want to delete ${selectedItems.length} selected item(s)?`)) {
-                    // Remove selected items from data
+            onClick: async () => {
+                if (window.confirm(`Delete ${selectedItems.length} selected record(s)?`)) {
                     const selectedIds = selectedItems.map(item => item.id);
+                    if (onDelete) {
+                        await onDelete(selectedIds);
+                    }
                     setData(prev => prev.filter(item => !selectedIds.includes(item.id)));
                     selection.setAllSelected(false);
                 }
             },
         },
         {
-            key: 'export',
-            text: 'Export Selected',
-            iconProps: { iconName: 'Download' },
-            disabled: selectedItems.length === 0,
-            onClick: () => {
-                console.log('Export selected items:', selectedItems);
-                // Add your export logic here
-                const csvContent = selectedItems.map(item => 
-                    `${item.product},${item.quantity},${item.amount}`
-                ).join('\n');
-                const header = 'Product,Quantity,Amount\n';
-                const blob = new Blob([header + csvContent], { type: 'text/csv' });
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'selected_items.csv';
-                a.click();
+            key: 'save',
+            text: 'Save',
+            iconProps: { iconName: 'Save' },
+            disabled: dirtyRecords.size === 0,
+            onClick: async () => {
+                if (onSave) {
+                    const recordsToSave = data.filter(record => dirtyRecords.has(record.id));
+                    await onSave(recordsToSave);
+                }
+                setDirtyRecords(new Set());
+                setEditingRows(new Set());
+                // Mark all records as not dirty
+                setData(prev => prev.map(record => ({ ...record, isDirty: false })));
             },
         },
-    ];
-
-    const commandBarFarItems: ICommandBarItemProps[] = [
         {
             key: 'refresh',
             text: 'Refresh',
             iconProps: { iconName: 'Refresh' },
-            onClick: () => fetchData(),
-        },
-        {
-            key: 'selectAll',
-            text: selectedItems.length === data.length ? 'Clear Selection' : 'Select All',
-            iconProps: { iconName: selectedItems.length === data.length ? 'Clear' : 'SelectAll' },
             onClick: () => {
-                if (selectedItems.length === data.length) {
-                    selection.setAllSelected(false);
-                } else {
-                    selection.setAllSelected(true);
-                }
+                // Reset dirty state and reload
+                setDirtyRecords(new Set());
+                setEditingRows(new Set());
+                setEditing({});
+                fetchData();
             },
-        },
+        }
     ];
 
-    // ---------------- FETCH ----------------
+    const commandBarFarItems: ICommandBarItemProps[] = [
+        {
+            key: 'export',
+            text: 'Export to Excel',
+            iconProps: { iconName: 'Download' },
+            onClick: () => {
+                const csvContent = data.map(item => 
+                    `${item.product},${item.quantity},${item.amount},${item.status},${item.category}`
+                ).join('\n');
+                const header = 'Product,Quantity,Amount,Status,Category\n';
+                const blob = new Blob([header + csvContent], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'records.csv';
+                a.click();
+            },
+        },
+        {
+            key: 'filter',
+            text: filterText ? `Clear Filter` : 'Filter',
+            iconProps: { iconName: filterText ? 'ClearFilter' : 'Filter' },
+            onClick: () => {
+                if (filterText) {
+                    setFilterText('');
+                } else {
+                    // Show filter UI
+                    const filter = prompt("Enter filter text:");
+                    if (filter) setFilterText(filter);
+                }
+            },
+        }
+    ];
+
+    // ---------------- FETCH DATA ----------------
     const fetchData = React.useCallback(async () => {
-        console.log("FluentGrid: fetchData called");
+        console.log("CRMGrid: fetchData called");
         setLoading(true);
         try {
-            console.log("FluentGrid: Making API request to /api/grid with request:", request);
-            const res = await axios.post("/api/grid", request);
-            console.log("FluentGrid: API response:", res.data);
-            setData(res.data.items);
-            console.log("FluentGrid: Data set to:", res.data.items);
+            console.log("CRMGrid: Making API request");
+            // Simulate API call - replace with actual CRM API
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log("CRMGrid: API response received");
         } catch (error) {
-            console.error("FluentGrid: API request failed:", error);
+            console.error("CRMGrid: API request failed:", error);
         } finally {
-            console.log("FluentGrid: Setting loading to false");
+            console.log("CRMGrid: Setting loading to false");
             setLoading(false);
         }
-    }, [request]);
-
-    React.useEffect(() => {
-        console.log("FluentGrid: useEffect triggered for fetchData");
-        console.log("FluentGrid: Current request:", request);
-        const t = setTimeout(() => {
-            console.log("FluentGrid: Calling fetchData after 400ms delay");
-            fetchData();
-        }, 400);
-        return () => {
-            console.log("FluentGrid: Clearing fetchData timeout");
-            clearTimeout(t);
-        };
-    }, [fetchData]);
+    }, []);
 
     // Effect to update data when initialData changes
     React.useEffect(() => {
-        console.log("FluentGrid: useEffect triggered for initialData change");
-        console.log("FluentGrid: New initialData:", initialData);
+        console.log("CRMGrid: useEffect triggered for initialData change");
+        console.log("CRMGrid: New initialData:", initialData);
         if (initialData && initialData.length > 0) {
-            console.log("FluentGrid: Setting data from initialData");
+            console.log("CRMGrid: Setting data from initialData");
             setData(initialData);
         }
     }, [initialData]);
 
-    // ---------------- FILTER ----------------
-    const setFilter = (field: string, value: string) => {
-        setRequest(prev => ({
-            ...prev,
-            page: 1,
-            filters: {
-                ...prev.filters,
-                [field]: value
-            }
-        }));
-    };
-
-    // ---------------- EDIT ----------------
+    // ---------------- EDIT FUNCTIONS ----------------
     const toggleEditMode = (id: string) => {
         setEditingRows(prev => {
             const newSet = new Set(prev);
@@ -233,247 +236,305 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                     [field]: value
                 }
             }));
+            
+            // Mark record as dirty
+            setDirtyRecords(prev => new Set([...prev, id]));
+            
+            // Update the actual data for immediate UI feedback
+            setData(prev => 
+                prev.map(item => 
+                    item.id === id 
+                        ? { ...item, [field]: value, isDirty: true }
+                        : item
+                )
+            );
         }
     };
 
-    // ---------------- GROUP EXPAND/COLLAPSE ----------------
-    const toggleGroup = (groupKey: string) => {
-        setExpandedGroups(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(groupKey)) {
-                newSet.delete(groupKey);
-            } else {
-                newSet.add(groupKey);
+    // ---------------- DATA PROCESSING WITH GROUPING ----------------
+    const { groups, groupedData } = React.useMemo(() => {
+        let filtered = data;
+        
+        // Apply filtering first
+        if (filterText) {
+            filtered = data.filter(item => 
+                Object.values(item).some(value => 
+                    value?.toString().toLowerCase().includes(filterText.toLowerCase())
+                )
+            );
+        }
+
+        // Apply sorting
+        if (sortBy) {
+            filtered = [...filtered].sort((a, b) => {
+                const aValue = a[sortBy.key as keyof RecordType];
+                const bValue = b[sortBy.key as keyof RecordType];
+                
+                // Handle undefined values
+                if (aValue == null && bValue == null) return 0;
+                if (aValue == null) return sortBy.descending ? 1 : -1;
+                if (bValue == null) return sortBy.descending ? -1 : 1;
+                
+                if (aValue < bValue) return sortBy.descending ? 1 : -1;
+                if (aValue > bValue) return sortBy.descending ? -1 : 1;
+                return 0;
+            });
+        }
+
+        // Create groups by product name
+        const productGroups = new Map<string, RecordType[]>();
+        
+        filtered.forEach(item => {
+            const productName = item.product || 'Unnamed Product';
+            if (!productGroups.has(productName)) {
+                productGroups.set(productName, []);
             }
-            return newSet;
-        });
-    };
-
-    // ---------------- SAVE ----------------
-    const saveRow = async (id: string) => {
-        const changes = editing[id];
-        if (!changes) return;
-
-        await axios.put(`/api/grid/${id}`, changes);
-
-        setData(prev =>
-            prev.map(x => (x.id === id ? { ...x, ...changes } : x))
-        );
-
-        setEditing(prev => {
-            const copy = { ...prev };
-            delete copy[id];
-            return copy;
+            productGroups.get(productName)!.push(item);
         });
 
-        // Exit edit mode after saving
-        setEditingRows(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(id);
-            return newSet;
-        });
-    };
+        // Create FluentUI groups structure
+        const groups: IGroup[] = [];
+        const flatData: RecordType[] = [];
+        let startIndex = 0;
 
-    // ---------------- GROUPING + AGGREGATION ----------------
-    const groupedData = React.useMemo(() => {
-        console.log("FluentGrid: Processing groupedData with data:", data);
+        productGroups.forEach((items, productName) => {
+            const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+            const totalAmount = items.reduce((sum, item) => sum + item.amount, 0);
+            const activeCount = items.filter(item => item.status === 'Active').length;
+            const inactiveCount = items.filter(item => item.status === 'Inactive').length;
+            const pendingCount = items.filter(item => item.status === 'Pending').length;
 
-        const map = new Map<string, RecordType[]>();
-
-        data.forEach(item => {
-            console.log("FluentGrid: Processing item for grouping:", item);
-            if (!map.has(item.product)) {
-                map.set(item.product, []);
-            }
-            map.get(item.product)!.push(item);
-        });
-
-        console.log("FluentGrid: Grouped map:", map);
-
-        const result: GridItem[] = [];
-
-        map.forEach((items, key) => {
-            console.log(`FluentGrid: Processing group ${key} with ${items.length} items:`, items);
-
-            const totalQuantity = items.reduce((s, i) => s + i.quantity, 0);
-            const totalAmount = items.reduce((s, i) => s + i.amount, 0);
-
-            console.log(`FluentGrid: Group ${key} totals - quantity: ${totalQuantity}, amount: ${totalAmount}`);
-
-            result.push({
-                isGroup: true,
-                key,
-                name: key,
+            groups.push({
+                key: productName,
+                name: `${productName}`,
+                startIndex,
                 count: items.length,
-                totalQuantity,
-                totalAmount
+                isCollapsed: false,
+                level: 0,
+                data: {
+                    totalQuantity,
+                    totalAmount,
+                    activeCount,
+                    inactiveCount,
+                    pendingCount
+                }
             });
 
-            // Only add child items if the group is expanded
-            if (expandedGroups.has(key)) {
-                items.forEach(item => {
-                    console.log(`FluentGrid: Adding item to result:`, item);
-                    result.push(item);
-                });
-            }
+            // Add sorted items to flat data
+            flatData.push(...items);
+            startIndex += items.length;
         });
 
-        console.log("FluentGrid: Final grouped result:", result);
-        return result;
+        return { groups, groupedData: flatData };
+    }, [data, filterText, sortBy]);
 
-    }, [data, expandedGroups]);
+    // ---------------- STYLING ----------------
+    const getStatusIcon = (status: string) => {
+        switch (status) {
+            case 'Active': return 'CompletedSolid';
+            case 'Inactive': return 'BlockedSolid';
+            case 'Pending': return 'Clock';
+            default: return 'Info';
+        }
+    };
 
-    // ---------------- CONDITIONAL STYLE ----------------
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'Active': return '#107C10';
+            case 'Inactive': return '#D13438';
+            case 'Pending': return '#FF8C00';
+            default: return '#605E5C';
+        }
+    };
+
     const getQuantityStyle = (qty: number) => ({
-        color: qty < 10 ? "red" : "green",
+        color: qty < 10 ? "#D13438" : "#107C10",
         fontWeight: "600" as const
     });
 
-    // ---------------- CUSTOM ROW RENDERER ----------------
-    const onRenderRow = (props: IDetailsRowProps | undefined) => {
-        if (!props) return null;
-
-        const item = props.item as GridItem;
-
-        let backgroundColor = '';
-
-        if (!('isGroup' in item)) {
-            const record = item as RecordType;
-            backgroundColor = record.quantity < 10 ? "#ffebee" : "#e8f5e8";
-        }
-
-        return (
-            <DetailsRow
-                {...props}
-                styles={{
-                    root: {
-                        backgroundColor,
-                        minHeight: 28
-                    }
-                }}
-            />
-        );
-    };
-
-    // ---------------- COLUMNS ----------------
+    // ---------------- COLUMNS (CRM Style) ----------------
     const columns: IColumn[] = [
-
         {
             key: "product",
-            name: "Product",
+            name: "Product Name",
             minWidth: 200,
+            maxWidth: 300,
             isResizable: true,
-            onRender: (item: GridItem) => {
-                if ('isGroup' in item && item.isGroup) {
-                    const isExpanded = expandedGroups.has(item.key);
-                    return (
-                        <Stack 
-                            horizontal 
-                            verticalAlign="center" 
-                            tokens={{ childrenGap: 8 }}
-                            styles={{
-                                root: {
-                                    backgroundColor: '#f8f9fa',
-                                    padding: '4px 8px',
-                                    borderRadius: '2px',
-                                    border: '1px solid #dee2e6',
-                                    fontWeight: 600,
-                                    color: '#495057'
-                                }
-                            }}
-                        >
-                            <IconButton
-                                iconProps={{ iconName: isExpanded ? 'ChevronDown' : 'ChevronRight' }}
-                                onClick={() => toggleGroup(item.key)}
-                                styles={{ 
-                                    root: { 
-                                        width: 24, 
-                                        height: 24,
-                                        minWidth: 24
-                                    } 
-                                }}
-                            />
-                            <strong>{item.name} ({item.count} items)</strong>
-                        </Stack>
-                    );
-                }
-
-                const recordItem = item as RecordType;
-                // Product name is read-only, not editable
-                return (
-                    <span style={{ 
-                        fontSize: 13, 
-                        fontWeight: 500,
-                        paddingLeft: '32px', // Indent child items under group
-                        display: 'block'
-                    }}>
-                        {recordItem.product}
-                    </span>
+            isSorted: sortBy?.key === 'product',
+            isSortedDescending: sortBy?.key === 'product' ? sortBy.descending : false,
+            onColumnClick: () => {
+                setSortBy(prev => 
+                    prev?.key === 'product' 
+                        ? { key: 'product', descending: !prev.descending }
+                        : { key: 'product', descending: false }
                 );
             },
-            onRenderHeader: () => (
-                <Stack>
-                    <span style={{ fontWeight: 600, marginBottom: 4 }}>Product</span>
-                    <TextField
-                        placeholder="Filter Product"
-                        onChange={(_, v) => setFilter("product", v || "")}
-                        styles={{
-                            root: { marginTop: 4 },
-                            field: { fontSize: 12 }
-                        }}
-                    />
-                </Stack>
-            )
+            onRender: (item: RecordType) => {
+                const isEditing = editingRows.has(item.id);
+                const isDirty = dirtyRecords.has(item.id);
+                
+                return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {isDirty && <Icon iconName="Edit" style={{ color: '#0078D4', fontSize: 12 }} />}
+                        {isEditing ? (
+                            <TextField
+                                value={editing[item.id]?.product ?? item.product}
+                                onChange={(_, value) => updateField(item.id, "product", value)}
+                                styles={{
+                                    root: { width: '100%' },
+                                    fieldGroup: { 
+                                        height: 28,
+                                        border: '1px solid #0078D4',
+                                        borderRadius: 2
+                                    },
+                                    field: { 
+                                        fontSize: 14,
+                                        padding: '4px 8px'
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <span 
+                                style={{ 
+                                    fontSize: 14, 
+                                    fontWeight: 500,
+                                    cursor: 'pointer',
+                                    color: '#323130'
+                                }}
+                                onClick={() => toggleEditMode(item.id)}
+                                title="Click to edit"
+                            >
+                                {item.product || 'Unnamed Product'}
+                            </span>
+                        )}
+                    </div>
+                );
+            }
+        },
+
+        {
+            key: "status",
+            name: "Status",
+            minWidth: 120,
+            maxWidth: 150,
+            isResizable: true,
+            isSorted: sortBy?.key === 'status',
+            isSortedDescending: sortBy?.key === 'status' ? sortBy.descending : false,
+            onColumnClick: () => {
+                setSortBy(prev => 
+                    prev?.key === 'status' 
+                        ? { key: 'status', descending: !prev.descending }
+                        : { key: 'status', descending: false }
+                );
+            },
+            onRender: (item: RecordType) => {
+                const isEditing = editingRows.has(item.id);
+                
+                const statusOptions: IDropdownOption[] = [
+                    { key: 'Active', text: 'Active' },
+                    { key: 'Inactive', text: 'Inactive' },
+                    { key: 'Pending', text: 'Pending' }
+                ];
+
+                return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {!isEditing && (
+                            <Icon 
+                                iconName={getStatusIcon(item.status)} 
+                                style={{ 
+                                    color: getStatusColor(item.status),
+                                    fontSize: 12
+                                }} 
+                            />
+                        )}
+                        {isEditing ? (
+                            <Dropdown
+                                options={statusOptions}
+                                selectedKey={editing[item.id]?.status ?? item.status}
+                                onChange={(_, option) => updateField(item.id, "status", option?.key as string)}
+                                styles={{
+                                    root: { width: '100%' },
+                                    dropdown: { 
+                                        height: 28,
+                                        border: '1px solid #0078D4',
+                                        borderRadius: 2
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <span 
+                                style={{ 
+                                    fontSize: 14,
+                                    color: getStatusColor(item.status),
+                                    fontWeight: 500,
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => toggleEditMode(item.id)}
+                                title="Click to edit"
+                            >
+                                {item.status}
+                            </span>
+                        )}
+                    </div>
+                );
+            }
         },
 
         {
             key: "quantity",
             name: "Quantity",
             minWidth: 100,
+            maxWidth: 120,
             isResizable: true,
-            onRender: (item: GridItem) => {
-                if ('isGroup' in item && item.isGroup) {
-                    return (
-                        <div style={{ fontWeight: 600, color: '#495057' }}>
-                            <strong>Total: {item.totalQuantity}</strong>
-                        </div>
-                    );
-                }
-
-                const recordItem = item as RecordType;
-                const isEditing = editingRows.has(recordItem.id);
+            isSorted: sortBy?.key === 'quantity',
+            isSortedDescending: sortBy?.key === 'quantity' ? sortBy.descending : false,
+            onColumnClick: () => {
+                setSortBy(prev => 
+                    prev?.key === 'quantity' 
+                        ? { key: 'quantity', descending: !prev.descending }
+                        : { key: 'quantity', descending: false }
+                );
+            },
+            onRender: (item: RecordType) => {
+                const isEditing = editingRows.has(item.id);
                 
-                if (isEditing) {
-                    return (
-                        <TextField
-                            type="number"
-                            value={(editing[recordItem.id]?.quantity ?? recordItem.quantity).toString()}
-                            onChange={(_, v) => updateField(recordItem.id, "quantity", Number(v))}
-                            styles={{
-                                root: { height: 24 },
-                                field: { 
-                                    height: 24, 
-                                    padding: '0 4px',
-                                    ...getQuantityStyle(recordItem.quantity),
-                                    fontSize: 13,
-                                    minHeight: 20
-                                }
-                            }}
-                        />
-                    );
-                } else {
-                    return (
-                        <span 
-                            style={{...getQuantityStyle(recordItem.quantity), cursor: 'pointer', fontSize: 13}}
-                            onClick={() => toggleEditMode(recordItem.id)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
-                        >
-                            {recordItem.quantity}
-                        </span>
-                    );
-                }
+                return (
+                    <div>
+                        {isEditing ? (
+                            <TextField
+                                type="number"
+                                value={(editing[item.id]?.quantity ?? item.quantity).toString()}
+                                onChange={(_, value) => updateField(item.id, "quantity", Number(value))}
+                                styles={{
+                                    fieldGroup: { 
+                                        height: 28,
+                                        border: '1px solid #0078D4',
+                                        borderRadius: 2
+                                    },
+                                    field: { 
+                                        fontSize: 14,
+                                        padding: '4px 8px',
+                                        textAlign: 'right'
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <span 
+                                style={{
+                                    ...getQuantityStyle(item.quantity), 
+                                    cursor: 'pointer', 
+                                    fontSize: 14,
+                                    display: 'block',
+                                    textAlign: 'right'
+                                }}
+                                onClick={() => toggleEditMode(item.id)}
+                                title="Click to edit"
+                            >
+                                {item.quantity.toLocaleString()}
+                            </span>
+                        )}
+                    </div>
+                );
             }
         },
 
@@ -481,119 +542,137 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
             key: "amount",
             name: "Amount",
             minWidth: 120,
+            maxWidth: 150,
             isResizable: true,
-            onRender: (item: GridItem) => {
-                if ('isGroup' in item && item.isGroup) {
-                    return (
-                        <div style={{ fontWeight: 600, color: '#495057' }}>
-                            <strong>Total: ${item.totalAmount.toFixed(2)}</strong>
-                        </div>
-                    );
-                }
-
-                const recordItem = item as RecordType;
-                const isEditing = editingRows.has(recordItem.id);
+            isSorted: sortBy?.key === 'amount',
+            isSortedDescending: sortBy?.key === 'amount' ? sortBy.descending : false,
+            onColumnClick: () => {
+                setSortBy(prev => 
+                    prev?.key === 'amount' 
+                        ? { key: 'amount', descending: !prev.descending }
+                        : { key: 'amount', descending: false }
+                );
+            },
+            onRender: (item: RecordType) => {
+                const isEditing = editingRows.has(item.id);
                 
-                if (isEditing) {
-                    return (
-                        <TextField
-                            type="number"
-                            value={(editing[recordItem.id]?.amount ?? recordItem.amount).toString()}
-                            onChange={(_, v) => updateField(recordItem.id, "amount", Number(v))}
-                            styles={{
-                                root: { height: 24 },
-                                field: { 
-                                    height: 24, 
-                                    padding: '0 4px',
-                                    fontWeight: 500,
-                                    fontSize: 13,
-                                    minHeight: 20
-                                }
-                            }}
-                        />
-                    );
-                } else {
-                    return (
-                        <span 
-                            onClick={() => toggleEditMode(recordItem.id)}
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && toggleEditMode(recordItem.id)}
-                            style={{cursor: 'pointer', fontWeight: 500, fontSize: 13}}
-                        >
-                            ${recordItem.amount.toFixed(2)}
-                        </span>
-                    );
-                }
+                return (
+                    <div>
+                        {isEditing ? (
+                            <TextField
+                                type="number"
+                                value={(editing[item.id]?.amount ?? item.amount).toString()}
+                                onChange={(_, value) => updateField(item.id, "amount", Number(value))}
+                                prefix="$"
+                                styles={{
+                                    fieldGroup: { 
+                                        height: 28,
+                                        border: '1px solid #0078D4',
+                                        borderRadius: 2
+                                    },
+                                    field: { 
+                                        fontSize: 14,
+                                        padding: '4px 8px',
+                                        textAlign: 'right'
+                                    }
+                                }}
+                            />
+                        ) : (
+                            <span 
+                                onClick={() => toggleEditMode(item.id)}
+                                style={{
+                                    cursor: 'pointer', 
+                                    fontWeight: 500, 
+                                    fontSize: 14,
+                                    color: '#323130',
+                                    display: 'block',
+                                    textAlign: 'right'
+                                }}
+                                title="Click to edit"
+                            >
+                                ${item.amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                            </span>
+                        )}
+                    </div>
+                );
             }
         },
 
         {
-            key: "actions",
-            name: "Actions",
-            minWidth: 120,
-            isResizable: false,
-            onRender: (item: GridItem) => {
-                if ('isGroup' in item && item.isGroup) return null;
-
-                const recordItem = item as RecordType;
-                const isEditing = editingRows.has(recordItem.id);
-
-                if (isEditing) {
-                    return (
-                        <Stack horizontal tokens={{ childrenGap: 8 }}>
-                            <PrimaryButton
-                                text="Save"
-                                onClick={() => saveRow(recordItem.id)}
+            key: "category",
+            name: "Category",
+            minWidth: 150,
+            maxWidth: 200,
+            isResizable: true,
+            isSorted: sortBy?.key === 'category',
+            isSortedDescending: sortBy?.key === 'category' ? sortBy.descending : false,
+            onColumnClick: () => {
+                setSortBy(prev => 
+                    prev?.key === 'category' 
+                        ? { key: 'category', descending: !prev.descending }
+                        : { key: 'category', descending: false }
+                );
+            },
+            onRender: (item: RecordType) => {
+                const isEditing = editingRows.has(item.id);
+                
+                return (
+                    <div>
+                        {isEditing ? (
+                            <TextField
+                                value={editing[item.id]?.category ?? item.category}
+                                onChange={(_, value) => updateField(item.id, "category", value)}
                                 styles={{
-                                    root: { minWidth: 40, height: 20, fontSize: 11 }
+                                    fieldGroup: { 
+                                        height: 28,
+                                        border: '1px solid #0078D4',
+                                        borderRadius: 2
+                                    },
+                                    field: { 
+                                        fontSize: 14,
+                                        padding: '4px 8px'
+                                    }
                                 }}
                             />
-                            <DefaultButton
-                                text="Cancel"
-                                onClick={() => toggleEditMode(recordItem.id)}
-                                styles={{
-                                    root: { minWidth: 40, height: 20, fontSize: 11 }
+                        ) : (
+                            <span 
+                                style={{ 
+                                    fontSize: 14,
+                                    color: '#323130',
+                                    cursor: 'pointer'
                                 }}
-                            />
-                        </Stack>
-                    );
-                } else {
-                    return (
-                        <DefaultButton
-                            text="Edit"
-                            onClick={() => toggleEditMode(recordItem.id)}
-                            styles={{
-                                root: { minWidth: 40, height: 20, fontSize: 11 }
-                            }}
-                        />
-                    );
-                }
+                                onClick={() => toggleEditMode(item.id)}
+                                title="Click to edit"
+                            >
+                                {item.category || 'Uncategorized'}
+                            </span>
+                        )}
+                    </div>
+                );
             }
         }
     ];
 
-    // ---------------- PAGINATION ----------------
-    const totalPages = 5; // ideally from API
-
-    const changePage = (p: number) => {
-        setRequest(prev => ({ ...prev, page: p }));
-    };
-
     // ---------------- UI ----------------
-    console.log("FluentGrid: Rendering UI");
-    console.log("FluentGrid: groupedData for render:", groupedData);
-    console.log("FluentGrid: columns for render:", columns);
-    console.log("FluentGrid: loading state for render:", loading);
+    console.log("CRMGrid: Rendering UI");
+    console.log("CRMGrid: groupedData for render:", groupedData);
+    console.log("CRMGrid: groups for render:", groups);
+    console.log("CRMGrid: columns for render:", columns);
+    console.log("CRMGrid: loading state for render:", loading);
     
     if (loading) {
-        console.log("FluentGrid: Showing loading spinner");
+        console.log("CRMGrid: Showing loading spinner");
     }
     
-    console.log("FluentGrid: DetailsList will render with", groupedData.length, "items");
+    console.log("CRMGrid: DetailsList will render with", groupedData.length, "items in", groups.length, "groups");
     
     return (
-        <Stack tokens={{ childrenGap: 0 }}>
+        <div style={{ 
+            height: '100vh', 
+            display: 'flex', 
+            flexDirection: 'column',
+            backgroundColor: '#f3f2f1' 
+        }}>
             
             {/* COMMAND BAR */}
             <CommandBar
@@ -601,124 +680,241 @@ export const FluentGrid: React.FC<FluentGridProps> = ({ data: initialData, conte
                 farItems={commandBarFarItems}
                 styles={{
                     root: {
-                        backgroundColor: '#f8f9fa',
-                        borderBottom: '1px solid #dee2e6',
-                        padding: '0 16px'
+                        backgroundColor: 'white',
+                        borderBottom: '1px solid #edebe9',
+                        padding: '0 16px',
+                        boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)'
                     }
                 }}
             />
 
             {loading && (
-                <Stack horizontalAlign="center" styles={{ root: { padding: 20 } }}>
-                    <Spinner label="Loading..." />
-                </Stack>
+                <div style={{ 
+                    padding: '20px',
+                    textAlign: 'center',
+                    backgroundColor: 'white' 
+                }}>
+                    <Spinner label="Loading records..." />
+                </div>
+            )}
+
+            {/* DIRTY RECORDS WARNING */}
+            {dirtyRecords.size > 0 && (
+                <div style={{
+                    backgroundColor: '#fff4ce',
+                    padding: '8px 16px',
+                    borderBottom: '1px solid #edebe9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                }}>
+                    <Icon iconName="Warning" style={{ color: '#797673' }} />
+                    <span style={{ fontSize: 14, color: '#323130' }}>
+                        {dirtyRecords.size} record{dirtyRecords.size !== 1 ? 's' : ''} have unsaved changes
+                    </span>
+                </div>
             )}
 
             {/* SELECTION INFO */}
             {selectedItems.length > 0 && (
                 <div style={{
-                    backgroundColor: '#e3f2fd',
+                    backgroundColor: '#deecf9',
                     padding: '8px 16px',
-                    borderBottom: '1px solid #dee2e6',
+                    borderBottom: '1px solid #edebe9',
                     fontSize: '14px',
-                    color: '#1976d2'
+                    color: '#323130',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
                 }}>
-                    {selectedItems.length} item{selectedItems.length !== 1 ? 's' : ''} selected
+                    <Icon iconName="CheckboxComposite" style={{ color: '#0078d4' }} />
+                    <span>
+                        {selectedItems.length} record{selectedItems.length !== 1 ? 's' : ''} selected
+                    </span>
                 </div>
             )}
 
-            {/* GRID */}
+            {/* FILTER INFO */}
+            {filterText && (
+                <div style={{
+                    backgroundColor: '#e1dfdd',
+                    padding: '6px 16px',
+                    borderBottom: '1px solid #edebe9',
+                    fontSize: '12px',
+                    color: '#605e5c',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8
+                }}>
+                    <Icon iconName="Filter" style={{ fontSize: 12 }} />
+                    <span>Filtered by: "{filterText}" • {groupedData.length} of {data.length} records shown in {groups.length} groups</span>
+                </div>
+            )}
+
+            {/* MAIN GRID AREA */}
             <div style={{ 
-                border: '1px solid #dee2e6', 
-                borderTop: selectedItems.length > 0 ? 'none' : '1px solid #dee2e6',
-                backgroundColor: 'white'
+                flex: 1,
+                backgroundColor: 'white',
+                border: '1px solid #edebe9',
+                margin: '8px 16px',
+                borderRadius: 2,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column'
             }}>
                 <DetailsList
                     items={groupedData}
                     columns={columns}
+                    groups={groups}
                     selectionMode={SelectionMode.multiple}
                     selection={selection}
                     checkboxVisibility={CheckboxVisibility.always}
                     layoutMode={DetailsListLayoutMode.justified}
                     isHeaderVisible={true}
-                    onShouldVirtualize={() => false}
-                    onRenderRow={onRenderRow}
+                    compact={false} // CRM grids are not compact
+                    groupProps={{
+                        onRenderHeader: (props?: IGroupHeaderProps) => {
+                            if (!props || !props.group) return null;
+                            
+                            const group = props.group;
+                            const groupData = group.data || {};
+                            const { totalQuantity, totalAmount, activeCount, inactiveCount, pendingCount } = groupData;
+
+                            return (
+                                <div
+                                    onClick={() => props.onToggleCollapse?.(group)}
+                                    style={{
+                                        padding: '8px 12px',
+                                        backgroundColor: '#f8f7f6',
+                                        borderBottom: '1px solid #edebe9',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 12,
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                        color: '#323130',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    <Icon 
+                                        iconName={group.isCollapsed ? 'ChevronRight' : 'ChevronDown'} 
+                                        style={{ fontSize: 12, color: '#605e5c' }} 
+                                    />
+                                    <Icon iconName="Product" style={{ fontSize: 14, color: '#0078d4' }} />
+                                    <span style={{ fontWeight: 600 }}>
+                                        {group.name} ({group.count} records)
+                                    </span>
+                                    <div style={{ marginLeft: 'auto', display: 'flex', gap: 16, fontSize: 12, color: '#605e5c' }}>
+                                        {totalQuantity !== undefined && (
+                                            <span>Total Qty: <strong>{totalQuantity.toLocaleString()}</strong></span>
+                                        )}
+                                        {totalAmount !== undefined && (
+                                            <span>Total Amount: <strong>${totalAmount.toLocaleString()}</strong></span>
+                                        )}
+                                        {activeCount !== undefined && (
+                                            <span style={{ color: '#107C10' }}>Active: <strong>{activeCount}</strong></span>
+                                        )}
+                                        {pendingCount !== undefined && pendingCount > 0 && (
+                                            <span style={{ color: '#FF8C00' }}>Pending: <strong>{pendingCount}</strong></span>
+                                        )}
+                                        {inactiveCount !== undefined && inactiveCount > 0 && (
+                                            <span style={{ color: '#D13438' }}>Inactive: <strong>{inactiveCount}</strong></span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        }
+                    }}
                     styles={{
                         root: {
+                            flex: 1,
                             '& .ms-DetailsHeader': {
-                                backgroundColor: '#f8f9fa',
-                                borderBottom: '2px solid #dee2e6',
-                                minHeight: '32px'
+                                backgroundColor: '#faf9f8',
+                                borderBottom: '1px solid #edebe9',
+                                paddingTop: 0,
+                                height: 42
                             },
                             '& .ms-DetailsHeader-cell': {
-                                fontSize: 13,
+                                fontSize: 14,
                                 fontWeight: 600,
-                                color: '#495057',
-                                padding: '4px 8px'
+                                color: '#323130',
+                                padding: '0 12px',
+                                '&:hover': {
+                                    backgroundColor: '#f3f2f1'
+                                },
+                                '&:active': {
+                                    backgroundColor: '#edebe9'
+                                }
+                            },
+                            '& .ms-DetailsHeader-cellName': {
+                                fontSize: 14,
+                                fontWeight: 600
                             },
                             '& .ms-DetailsRow': {
-                                borderBottom: '1px solid #ededed',
-                                height: '28px',
-                                minHeight: '28px',
+                                borderBottom: '1px solid #f3f2f1',
+                                minHeight: 40,
                                 '&:hover': {
-                                    filter: 'brightness(0.95)'
+                                    backgroundColor: '#f8f7f6'
+                                },
+                                '&.is-selected': {
+                                    backgroundColor: '#deecf9',
+                                    '&:hover': {
+                                        backgroundColor: '#cce1f5'
+                                    }
+                                },
+                                '&.is-selected:after': {
+                                    borderLeft: '3px solid #0078d4'
                                 }
                             },
                             '& .ms-DetailsRow-cell': {
-                                fontSize: 13,
-                                height: '28px',
-                                padding: '0 8px',   // IMPORTANT
-                                lineHeight: '28px',  // IMPORTANT
+                                fontSize: 14,
+                                padding: '8px 12px',
+                                minHeight: 40,
                                 display: 'flex',
-                                alignItems: 'center'
+                                alignItems: 'center',
+                                color: '#323130'
                             },
                             '& .ms-Check': {
-                                height: '18px',
-                                width: '18px'
+                                height: 20,
+                                width: 20
+                            },
+                            '& .ms-CheckBox': {
+                                marginRight: 8
                             }
                         }
                     }}
                 />
+
+                {/* FOOTER */}
+                <div style={{
+                    backgroundColor: '#faf9f8',
+                    borderTop: '1px solid #edebe9',
+                    padding: '8px 16px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    fontSize: 14,
+                    color: '#605e5c',
+                    minHeight: 44
+                }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Icon iconName="Documentation" style={{ fontSize: 16 }} />
+                        <span>
+                            {groupedData.length} record{groupedData.length !== 1 ? 's' : ''} in {groups.length} group{groups.length !== 1 ? 's' : ''}
+                            {filterText && ` (filtered from ${data.length})`}
+                        </span>
+                    </div>
+                    
+                    {dirtyRecords.size > 0 && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Icon iconName="EditNote" style={{ fontSize: 16, color: '#0078d4' }} />
+                            <span style={{ color: '#0078d4' }}>
+                                {dirtyRecords.size} unsaved change{dirtyRecords.size !== 1 ? 's' : ''}
+                            </span>
+                        </div>
+                    )}
+                </div>
             </div>
-
-            {/* PAGINATION */}
-            <Stack 
-                horizontal 
-                horizontalAlign="space-between" 
-                verticalAlign="center"
-                tokens={{ childrenGap: 10 }}
-                styles={{
-                    root: {
-                        backgroundColor: '#f8f9fa',
-                        borderTop: '1px solid #dee2e6',
-                        padding: '12px 16px'
-                    }
-                }}
-            >
-                <Stack horizontal tokens={{ childrenGap: 10 }}>
-                    <DefaultButton
-                        text="Previous"
-                        iconProps={{ iconName: 'ChevronLeft' }}
-                        onClick={() => changePage(request.page - 1)}
-                        disabled={request.page <= 1}
-                    />
-                    <DefaultButton
-                        text="Next"
-                        iconProps={{ iconName: 'ChevronRight' }}
-                        onClick={() => changePage(request.page + 1)}
-                        disabled={request.page >= totalPages}
-                    />
-                </Stack>
-                
-                <span style={{ fontSize: 14, color: '#495057' }}>
-                    Page {request.page} of {totalPages}
-                </span>
-                
-                <span style={{ fontSize: 14, color: '#6c757d' }}>
-                    Total: {data.length} items
-                </span>
-            </Stack>
-
-        </Stack>
+        </div>
     );
 };

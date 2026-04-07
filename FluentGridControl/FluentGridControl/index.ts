@@ -16,6 +16,11 @@ interface RecordType {
     product: string;
     quantity: number;
     amount: number;
+    status: 'Active' | 'Inactive' | 'Pending';
+    category: string;
+    lastModified?: Date;
+    owner?: string;
+    isDirty?: boolean;
 }
 
 export class FluentGridControl implements ComponentFramework.StandardControl<IInputs, IOutputs> {
@@ -52,23 +57,55 @@ export class FluentGridControl implements ComponentFramework.StandardControl<IIn
                 const quantity = Number(record.getValue("quantity") ?? 0);
                 const amount = Number(record.getValue("extendedamount") ?? 0);
 
+                // Map additional CRM fields or provide defaults
+                const statusValue = record.getValue("statuscode") || record.getValue("statecode") || 1;
+                let status: 'Active' | 'Inactive' | 'Pending' = 'Active';
+                if (statusValue === 0 || statusValue === 'Inactive') {
+                    status = 'Inactive';
+                } else if (statusValue === 2 || statusValue === 'Pending') {
+                    status = 'Pending';
+                }
+
+                const category = String(record.getValue("productcategory") ?? record.getValue("category") ?? "General");
+
                 return {
                     id: id,
                     product: productName,
                     quantity: quantity,
-                    amount: amount
+                    amount: amount,
+                    status: status,
+                    category: category,
+                    lastModified: new Date(record.getValue("modifiedon") as string ?? Date.now()),
+                    owner: String(record.getValue("ownervalue") ?? record.getValue("createdby") ?? "System"),
+                    isDirty: false
                 };
             });
         }
 
         console.log("FluentGridControl: Creating React element with FluentGrid");
         console.log("FluentGridControl: Records being passed to FluentGrid:", records);
+        
+        // Define callback functions for CRM operations
+        const handleSave = async (recordsToSave: RecordType[]) => {
+            console.log("FluentGridControl: Saving records:", recordsToSave);
+            // TODO: Implement actual CRM save operations
+            // This would typically call context.webAPI to update records
+        };
+
+        const handleDelete = async (recordIds: string[]) => {
+            console.log("FluentGridControl: Deleting records:", recordIds);
+            // TODO: Implement actual CRM delete operations
+            // This would typically call context.webAPI to delete records
+        };
+
         try {
             // Render the React component to the container using React 16
             ReactDOM.render(
                 React.createElement(FluentGrid, {
                     data: records,
-                    context: context
+                    context: context,
+                    onSave: handleSave,
+                    onDelete: handleDelete
                 }),
                 this.container
             );
