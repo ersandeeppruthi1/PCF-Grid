@@ -351,10 +351,12 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                             root: {
                                                 backgroundColor: '#0078d4',
                                                 color: 'white',
-                                                padding: '8px 12px',
+                                                padding: '0',
+                                                margin: '0',
                                                 fontWeight: 600,
                                                 display: 'flex',
-                                                alignItems: 'center'
+                                                alignItems: 'center',
+                                                height: '32px'
                                             }
                                         }}
                                     />
@@ -370,8 +372,8 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         alignItems: 'center',
                                         pointerEvents: 'none'
                                     }}>
-                                        {/* Checkbox + expand icon space */}
-                                        <div style={{ width: '128px' }}></div>
+                                        {/* Checkbox + expand icon space - match exact spacing */}
+                                        <div style={{ width: '48px' }}></div>
                                         
                                         {/* Product column - skip */}
                                         <div style={{ width: '200px' }}></div>
@@ -383,7 +385,8 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                             color: 'white',
                                             fontSize: '12px',
                                             fontWeight: 600,
-                                            paddingRight: '8px'
+                                            paddingRight: '16px',
+                                            paddingLeft: '8px'
                                         }}>
                                             {totals?.totalQty}
                                         </div>
@@ -395,7 +398,8 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                             color: 'white',
                                             fontSize: '12px',
                                             fontWeight: 600,
-                                            paddingRight: '8px'
+                                            paddingRight: '16px',
+                                            paddingLeft: '8px'
                                         }}>
                                             ${totals?.totalAmt?.toFixed(2)}
                                         </div>
