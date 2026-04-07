@@ -59,11 +59,16 @@ console.log("HI4 dsdasdsf sdfdf");
         if (dataset.sortedRecordIds.length > 0) {
             records = dataset.sortedRecordIds.map(id => {
                 const record = dataset.records[id];
-
+console.log("HI5 dsdasdsf sdfdf", record);
                 const productRef = record.getValue("productname") as ComponentFramework.LookupValue[] | null;
                 const productName =
                     productRef?.[0]?.name ??
                     String(record.getValue("productname") ?? "N/A");
+
+                const categoryRef = record.getValue("new_categoryid") as ComponentFramework.LookupValue[] | null;
+                const categoryName =
+                    categoryRef?.[0]?.name ??
+                    String(record.getValue("new_categoryid") ?? "General");
 
                 return {
                     id: id,
@@ -71,7 +76,7 @@ console.log("HI4 dsdasdsf sdfdf");
                     quantity: Number(record.getValue("quantity") ?? 0),
                     amount: Number(record.getValue("extendedamount") ?? 0),
                     status: 'Open' as const,
-                    category: String(record.getValue("productcategory") ?? "General"),
+                    category: categoryName,
                     isDirty: false
                 };
             });

@@ -126,11 +126,6 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
         map.forEach((items, key) => {
             const totalQty = items.reduce((a, b) => a + b.quantity, 0);
             const totalAmt = items.reduce((a, b) => a + b.amount, 0);
-            
-            // Calculate status counts
-            const openCount = items.filter(item => item.status === 'Open').length;
-            const activeCount = items.filter(item => item.status === 'Active').length;
-            const resolvedCount = items.filter(item => item.status === 'Resolved').length;
 
             groups.push({
                 key,
@@ -140,10 +135,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                 level: 0,
                 data: { 
                     totalQty, 
-                    totalAmt,
-                    openCount,
-                    activeCount,
-                    resolvedCount
+                    totalAmt
                 }
             });
 
@@ -166,10 +158,10 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
     const columns: IColumn[] = [
         {
             key: "product",
-            name: "Product",
+            name: "Product1",
             fieldName: "product",
-            minWidth: 259,
-            maxWidth: 259,
+            minWidth: 318,
+            maxWidth: 318,
             isResizable: false,
             onRender: (item: RecordType) => (
                 <div style={{ width: '259px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -339,7 +331,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         <div style={{ width: '48px' }}></div>
                                         
                                         {/* Product column - skip */}
-                                        <div style={{ width: '200px' }}></div>
+                                        <div style={{ width: '317px' }}></div>
                                         
                                         {/* Quantity column total */}
                                         <div style={{ 
