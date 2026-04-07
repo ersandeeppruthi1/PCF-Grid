@@ -133,8 +133,8 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                 startIndex: index,
                 count: items.length,
                 level: 0,
-                data: { 
-                    totalQty, 
+                data: {
+                    totalQty,
                     totalAmt
                 }
             });
@@ -203,8 +203,8 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             maxWidth: 100,
             isResizable: false,
             onRender: (item: RecordType) => (
-                <div style={{ width: '100px', textAlign: 'right', paddingRight: '47px' }}>
-                    <span>${item.amount.toFixed(2)}</span>
+                <div style={{ width: '100px', textAlign: 'right' }}>
+                    <span style={{ paddingRight: '47px' }}>${item.amount.toFixed(2)}</span>
                 </div>
             )
         },
@@ -218,7 +218,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
             onRender: (item: RecordType) => {
                 return (
                     <div style={{ width: '120px', textAlign: 'center' }}>
-                        <span style={{ cursor: 'default' }}>
+                        <span style={{ cursor: 'default', paddingRight: '80px' }}>
                             {item.status}
                         </span>
                     </div>
@@ -279,12 +279,12 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
 
                     onRenderRow={(props, defaultRender) => {
                         if (!props) return null;
-                        
+
                         const record = props.item as RecordType;
-                        const rowStyle = record.quantity < 10 
-                            ? { backgroundColor: "#ffebee" } 
+                        const rowStyle = record.quantity < 10
+                            ? { backgroundColor: "#ffebee" }
                             : { backgroundColor: "#e8f5e8" };
-                        
+
                         return (
                             <div style={rowStyle}>
                                 {defaultRender ? defaultRender(props) : null}
@@ -300,8 +300,8 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
 
                             return (
                                 <div style={{ position: 'relative' }}>
-                                    <GroupHeader 
-                                        {...props} 
+                                    <GroupHeader
+                                        {...props}
                                         styles={{
                                             root: {
                                                 backgroundColor: '#f3f2f1',
@@ -315,7 +315,7 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                             }
                                         }}
                                     />
-                                    
+
                                     {/* Overlay totals in the group header aligned with columns */}
                                     <div style={{
                                         position: 'absolute',
@@ -329,12 +329,12 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                     }}>
                                         {/* Checkbox + expand icon space - match exact spacing */}
                                         <div style={{ width: '48px' }}></div>
-                                        
+
                                         {/* Product column - skip */}
                                         <div style={{ width: '270px' }}></div>
-                                        
+
                                         {/* Quantity column total */}
-                                        <div style={{ 
+                                        <div style={{
                                             width: '80px',
                                             textAlign: 'right',
                                             color: '#323130',
@@ -345,9 +345,9 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                         }}>
                                             {totals?.totalQty}
                                         </div>
-                                        
+
                                         {/* Amount column total */}
-                                        <div style={{ 
+                                        <div style={{
                                             width: '113px',
                                             textAlign: 'right',
                                             color: '#323130',
