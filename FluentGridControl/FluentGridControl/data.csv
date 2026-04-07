@@ -1,0 +1,21 @@
+id,product,quantity,amount,status,category,isDirty
+1,Microsoft Surface Laptop,15,1499.99,Active,Hardware,false
+2,Microsoft Surface Laptop,8,1299.99,Open,Hardware,false
+3,Microsoft Surface Laptop,25,1699.99,Resolved,Hardware,false
+4,Office 365 License,50,12.99,Active,Software,false
+5,Office 365 License,5,15.99,Open,Software,false
+6,Office 365 License,100,10.99,Active,Software,false
+7,Azure Subscription,3,299.99,Active,Service,false
+8,Azure Subscription,12,199.99,Open,Service,false
+9,Azure Subscription,7,399.99,Resolved,Service,false
+10,Dell Monitor,20,299.99,Active,Hardware,false
+11,Dell Monitor,4,349.99,Open,Hardware,false
+12,Visual Studio License,15,89.99,Active,Software,false
+13,Visual Studio License,2,99.99,Resolved,Software,false
+14,Consulting Services,8,150.00,Open,Service,false
+15,Consulting Services,30,125.00,Active,Service,false
+16,HP Printer,6,189.99,Open,Hardware,false
+17,HP Printer,18,169.99,Active,Hardware,false
+18,Teams License,9,8.99,Resolved,Software,false
+19,Teams License,75,7.99,Active,Software,false
+20,Support Services,1,500.00,Open,Service,false
