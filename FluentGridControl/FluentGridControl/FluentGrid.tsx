@@ -159,17 +159,17 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                 console.log("Saving to server:", updateData);
                                 
                                 // Example API call (uncomment and modify for your actual API)
-                                // const response = await fetch(`/api/records/${record.id}`, {
-                                //     method: 'PUT',
-                                //     headers: {
-                                //         'Content-Type': 'application/json',
-                                //     },
-                                //     body: JSON.stringify(updateData)
-                                // });
+                                const response = await fetch(`/api/records/${record.id}`, {
+                                    method: 'PUT',
+                                    headers: {
+                                        'Content-Type': 'application/json',
+                                    },
+                                    body: JSON.stringify(updateData)
+                                });
                                 
-                                // if (!response.ok) {
-                                //     throw new Error(`Failed to update record ${record.id}`);
-                                // }
+                                if (!response.ok) {
+                                    throw new Error(`Failed to update record ${record.id}`);
+                                }
                                 
                                 return { success: true, id: record.id };
                                 
