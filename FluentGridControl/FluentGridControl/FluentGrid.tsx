@@ -105,7 +105,141 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                 setEditingRows(prev => new Set([...prev, newRecord.id]));
                 setDirtyRecords(prev => new Set([...prev, newRecord.id]));
             }
-        }
+        },
+        {
+            key: 'refresh',
+            text: 'Refresh',
+            iconProps: { iconName: 'Refresh' },
+            onClick: () => {
+                // Refresh the grid data
+                console.log("Refreshing grid data");
+                // Reset to initial data or trigger data reload
+                if (initialData) {
+                    setData(initialData);
+                }
+                setEditingRows(new Set());
+                setDirtyRecords(new Set());
+                setSelectedItems([]);
+                setFilterText("");
+                
+                // If you have a callback to parent component for data refresh, call it here
+                // onRefresh?.();
+            }
+        },
+        // Show Update and Cancel buttons when there are editing rows
+        ...(editingRows.size > 0 ? [
+            {
+                key: 'update',
+                text: 'Update',
+                iconProps: { iconName: 'Save' },
+                onClick: async () => {
+                    // Save changes for all editing rows to server
+                    console.log("Updating records:", Array.from(editingRows));
+                    
+                    try {
+                        // Get all dirty records that need to be updated
+                        const recordsToUpdate = data.filter(record => 
+                            editingRows.has(record.id) || dirtyRecords.has(record.id)
+                        );
+                        
+                        // Update each record on the server
+                        const updatePromises = recordsToUpdate.map(async (record) => {
+                            try {
+                                // Prepare data for server update
+                                const updateData = {
+                                    id: record.id,
+                                    product: record.product,
+                                    quantity: record.quantity,
+                                    amount: record.amount,
+                                    status: record.status,
+                                    category: record.category
+                                };
+                                
+                                // Simulate server API call - replace with actual API endpoint
+                                console.log("Saving to server:", updateData);
+                                
+                                // Example API call (uncomment and modify for your actual API)
+                                // const response = await fetch(`/api/records/${record.id}`, {
+                                //     method: 'PUT',
+                                //     headers: {
+                                //         'Content-Type': 'application/json',
+                                //     },
+                                //     body: JSON.stringify(updateData)
+                                // });
+                                
+                                // if (!response.ok) {
+                                //     throw new Error(`Failed to update record ${record.id}`);
+                                // }
+                                
+                                return { success: true, id: record.id };
+                                
+                            } catch (error) {
+                                console.error(`Error updating record ${record.id}:`, error);
+                                return { success: false, id: record.id, error };
+                            }
+                        });
+                        
+                        // Wait for all updates to complete
+                        const results = await Promise.allSettled(updatePromises);
+                        
+                        // Check results and handle any failures
+                        const failures = results
+                            .filter(result => result.status === 'rejected' || 
+                                    (result.status === 'fulfilled' && !result.value.success))
+                            .map(result => result.status === 'fulfilled' ? result.value : result.reason);
+                        
+                        if (failures.length > 0) {
+                            console.error("Some updates failed:", failures);
+                            alert(`Failed to update ${failures.length} record(s). Please try again.`);
+                            return;
+                        }
+                        
+                        // Mark records as clean (no longer dirty)
+                        setData(prev => 
+                            prev.map(record => 
+                                editingRows.has(record.id) || dirtyRecords.has(record.id)
+                                    ? { ...record, isDirty: false }
+                                    : record
+                            )
+                        );
+                        
+                        // Clear editing and dirty states
+                        setEditingRows(new Set());
+                        setDirtyRecords(new Set());
+                        
+                        console.log("All records updated successfully");
+                        
+                        // Optional: Show success message
+                        // alert("Records updated successfully!");
+                        
+                    } catch (error) {
+                        console.error("Error during update process:", error);
+                        alert("Failed to update records. Please try again.");
+                    }
+                }
+            },
+            {
+                key: 'cancel',
+                text: 'Cancel',
+                iconProps: { iconName: 'Cancel' },
+                onClick: () => {
+                    // Cancel changes - restore original values
+                    if (initialData) {
+                        const originalData = new Map(initialData.map(item => [item.id, item]));
+                        setData(prev => 
+                            prev.map(item => {
+                                if (editingRows.has(item.id) && originalData.has(item.id)) {
+                                    return originalData.get(item.id)!;
+                                }
+                                return item;
+                            })
+                        );
+                    }
+                    setEditingRows(new Set());
+                    setDirtyRecords(new Set());
+                }
+            }
+        ] : [])
     ];
 
     // ---------------- EDIT ----------------
@@ -319,7 +453,14 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                             : "fluent-grid-row-green"; // Light green for qty >= 10
 
                         return (
-                            <div className={className}>
+                            <div 
+                                className={className}
+                                onDoubleClick={() => {
+                                    console.log("Double-clicked on row:", record.id);
+                                    setEditingRows(prev => new Set([...prev, record.id]));
+                                }}
+                                style={{ cursor: 'pointer' }}
+                            >
                                 {defaultRender ? defaultRender(props) : null}
                             </div>
                         );
