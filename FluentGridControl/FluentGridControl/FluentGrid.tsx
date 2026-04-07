@@ -158,17 +158,32 @@ export const FluentGrid: React.FC<CRMGridProps> = ({ data: initialData }) => {
                                 // Simulate server API call - replace with actual API endpoint
                                 console.log("Saving to server:", updateData);
                                 
-                                // Example API call (uncomment and modify for your actual API)
-                                const response = await fetch(`/api/records/${record.id}`, {
-                                    method: 'PUT',
+                                // Dynamics 365 Web API call - using proper entity endpoint
+                                const entityName = "salesorderdetails"; // Replace with your actual entity logical name
+                                const baseUrl = "https://orgc6359062.crm8.dynamics.com";
+                                const apiUrl = `${baseUrl}/api/data/v9.2/${entityName}(${record.id})`;
+                                
+                                const response = await fetch(apiUrl, {
+                                    method: 'PATCH', // Use PATCH for updates in Dynamics 365
                                     headers: {
                                         'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'OData-MaxVersion': '4.0',
+                                        'OData-Version': '4.0',
+                                        'If-Match': '*' // Optimistic concurrency
                                     },
-                                    body: JSON.stringify(updateData)
+                                    body: JSON.stringify({
+                                        quantity: updateData.quantity,
+                                        extendedamount: updateData.amount
+                                        // Map other fields to Dynamics 365 field names as needed
+                                        // productname: updateData.product,
+                                        // statuscode: updateData.status
+                                    })
                                 });
                                 
                                 if (!response.ok) {
-                                    throw new Error(`Failed to update record ${record.id}`);
+                                    const errorText = await response.text();
+                                    throw new Error(`Failed to update record ${record.id}: ${response.status} - ${errorText}`);
                                 }
                                 
                                 return { success: true, id: record.id };
